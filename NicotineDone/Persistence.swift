@@ -1,57 +1,80 @@
 //
 //  Persistence.swift
-//  NicotineDone
+//  CigTrack
 //
-//  Created by Yan Nosov on 21/1/2569 BE.
+//  Created by Yan on 4/11/25.
 //
 
 import CoreData
 
-struct PersistenceController {
+final class PersistenceController {
     static let shared = PersistenceController()
-
-    @MainActor
-    static let preview: PersistenceController = {
-        let result = PersistenceController(inMemory: true)
-        let viewContext = result.container.viewContext
-        for _ in 0..<10 {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-        }
-        do {
-            try viewContext.save()
-        } catch {
-            // Replace this implementation with code to handle the error appropriately.
-            // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-        }
-        return result
-    }()
 
     let container: NSPersistentContainer
 
     init(inMemory: Bool = false) {
-        container = NSPersistentContainer(name: "NicotineDone")
+        container = NSPersistentContainer(name: "PuffQuest")
         if inMemory {
-            container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+            container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
         }
-        container.loadPersistentStores(completionHandler: { (storeDescription, error) in
-            if let error = error as NSError? {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-
-                /*
-                 Typical reasons for an error here include:
-                 * The parent directory does not exist, cannot be created, or disallows writing.
-                 * The persistent store is not accessible, due to permissions or data protection when the device is locked.
-                 * The device is out of space.
-                 * The store could not be migrated to the current model version.
-                 Check the error message to determine what the actual problem was.
-                 */
-                fatalError("Unresolved error \(error), \(error.userInfo)")
+        container.loadPersistentStores { _, error in
+            if let error {
+                fatalError("Unresolved error \(error)")
             }
-        })
+        }
+        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         container.viewContext.automaticallyMergesChangesFromParent = true
+    }
+}
+
+extension PersistenceController {
+    static let preview: PersistenceController = {
+        let controller = PersistenceController(inMemory: true)
+        let ctx = controller.container.viewContext
+
+        let user = User(context: ctx)
+        user.id = UUID()
+        user.createdAt = Date()
+        user.productType = ProductType.cigarette.rawValue
+        user.dailyLimit = 10
+        user.packSize = 20
+        user.packCost = 12.5
+        user.currencyCode = "USD"
+        user.coins = 25
+        user.xp = 420
+
+        let streak = Streak(context: ctx)
+        streak.id = UUID()
+        streak.currentLength = 3
+        streak.bestLength = 5
+        streak.updatedAt = Date()
+        streak.user = user
+
+        (0..<7).forEach { dayOffset in
+            let stat = DailyStat(context: ctx)
+            stat.id = UUID()
+            stat.date = Calendar.current.date(byAdding: .day, value: -dayOffset, to: Date())!
+            stat.count = Int32(5 + dayOffset)
+            stat.type = EntryType.cig.rawValue
+            stat.user = user
+        }
+
+        do {
+            try ctx.save()
+        } catch {
+            fatalError("Preview context error \(error)")
+        }
+        return controller
+    }()
+}
+
+extension NSManagedObjectContext {
+    func saveIfNeeded() {
+        guard hasChanges else { return }
+        do {
+            try save()
+        } catch {
+            assertionFailure("Failed to save context: \(error)")
+        }
     }
 }

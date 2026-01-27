@@ -551,10 +551,10 @@ private struct DailyDetailSheet: View {
                                             .resizable()
                                             .scaledToFit()
                                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                            .frame(width: 50, height: 50)
+                                            .frame(height: 40)
                                     }
 
-                                    VStack(alignment: .leading, spacing: 4) {
+                                    VStack(alignment: .center, spacing: 4) {
                                         Text(timeString(for: entry.createdAt ?? Date()))
                                             .font(.headline)
                                             .foregroundStyle(primaryTextColor)

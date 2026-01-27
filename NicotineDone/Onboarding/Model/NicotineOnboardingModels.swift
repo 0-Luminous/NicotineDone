@@ -58,11 +58,11 @@ enum NicotineMethod: String, Codable, CaseIterable, Identifiable {
 
     var iconAssetName: String {
         switch self {
-        case .cigarettes: return "Cigarette"
-        case .disposableVape: return "Disposable vape"
-        case .refillableVape: return "RefillableVape"
-        case .heatedTobacco: return "HeatingDevice"
-        case .snusOrPouches: return "SnusPouch"
+        case .cigarettes: return "CigaretteH"
+        case .disposableVape: return "Disposable vapeH"
+        case .refillableVape: return "RefillableVapeH"
+        case .heatedTobacco: return "HeatingDeviceH"
+        case .snusOrPouches: return "SnusPouchH"
         }
     }
 }

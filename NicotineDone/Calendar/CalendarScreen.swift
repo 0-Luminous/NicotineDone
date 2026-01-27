@@ -79,14 +79,13 @@ struct CalendarScreen: View {
                                 .buttonStyle(.plain)
                                 .disabled(!isAvailable)
                             } else {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(Color.white.opacity(0.02))
+                                RoundedRectangle(cornerRadius: 100, style: .continuous)
+                                    .fill(Color.white.opacity(0.03))
                                     .frame(height: 84)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: 100, style: .continuous)
+                                            .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
                                     )
-                                    .glassEffect(.clear)
                             }
                         }
                     }

@@ -47,11 +47,13 @@ struct CalendarScreen: View {
 
             ScrollView {
                 VStack(spacing: 16) {
-                    MonthSlider(months: monthsOfYear,
-                                selection: $monthAnchor,
-                                selectedColor: primaryTextColor,
-                                unselectedColor: secondaryTextColor)
-                        .foregroundStyle(primaryTextColor)
+                    if !monthsOfYear.isEmpty {
+                        MonthSlider(months: monthsOfYear,
+                                    selection: $monthAnchor,
+                                    selectedColor: primaryTextColor,
+                                    unselectedColor: secondaryTextColor)
+                            .foregroundStyle(primaryTextColor)
+                    }
 
                     WeekdayHeader(textColor: secondaryTextColor)
                         .foregroundStyle(primaryTextColor)
@@ -98,22 +100,24 @@ struct CalendarScreen: View {
         .navigationTitle("")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    pendingYearSelection = currentYear
-                    isYearPickerPresented = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(yearTitle)
-                            .font(.headline)
-                        Image(systemName: "chevron.down")
-                            .font(.caption.weight(.semibold))
+                if !yearOptions.isEmpty {
+                    Button {
+                        pendingYearSelection = yearOptions.contains(currentYear) ? currentYear : (yearOptions.last ?? currentYear)
+                        isYearPickerPresented = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(yearTitle)
+                                .font(.headline)
+                            Image(systemName: "chevron.down")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        // .background(Color.white.opacity(0.12), in: Capsule())
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    // .background(Color.white.opacity(0.12), in: Capsule())
+                    .buttonStyle(.plain)
+                    .tint(primaryTextColor)
                 }
-                .buttonStyle(.plain)
-                .tint(primaryTextColor)
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.9), value: monthAnchor)
@@ -153,6 +157,9 @@ struct CalendarScreen: View {
             }
             .presentationDetents([.fraction(0.35)])
         }
+        .onAppear {
+            alignMonthAnchorToAvailableData()
+        }
     }
 
     private var gridDays: [Date?] {
@@ -185,14 +192,7 @@ struct CalendarScreen: View {
     }
 
     private var yearOptions: [Int] {
-        let calendar = Calendar.current
-        let creationYear = calendar.component(.year, from: user.createdAt ?? Date())
-        let currentYear = calendar.component(.year, from: Date())
-        let anchorYear = calendar.component(.year, from: monthAnchor)
-        let start = [creationYear, currentYear, anchorYear].min() ?? currentYear
-        let endBaseline = [creationYear, anchorYear].max() ?? currentYear
-        let end = max(currentYear + 1, endBaseline)
-        return Array(start...end)
+        yearsWithData()
     }
 
     private func applySelectedYear() {
@@ -203,11 +203,21 @@ struct CalendarScreen: View {
     }
 
     private func updateYear(to year: Int) {
-        var components = Calendar.current.dateComponents([.month], from: monthAnchor)
+        let calendar = Calendar.current
+        let targetMonth = calendar.component(.month, from: monthAnchor)
+        let availableMonths = monthsWithData(in: year)
+
+        if let closest = closestMonth(to: targetMonth, in: availableMonths) {
+            monthAnchor = closest
+            return
+        }
+
+        var components = DateComponents()
         components.year = year
+        components.month = targetMonth
         components.day = 1
-        guard let date = Calendar.current.date(from: components) else { return }
-        monthAnchor = Calendar.current.startOfMonth(for: date)
+        guard let date = calendar.date(from: components) else { return }
+        monthAnchor = calendar.startOfMonth(for: date)
     }
 
     private func count(for date: Date) -> Int {
@@ -223,12 +233,84 @@ struct CalendarScreen: View {
     }
 
     private var monthsOfYear: [Date] {
+        monthsWithData(in: currentYear)
+    }
+
+    private func monthsWithData(in year: Int) -> [Date] {
         let calendar = Calendar.current
-        var components = calendar.dateComponents([.year], from: monthAnchor)
-        components.month = 1
-        components.day = 1
-        let startOfYear = calendar.date(from: components) ?? monthAnchor
-        return (0..<12).compactMap { calendar.date(byAdding: .month, value: $0, to: startOfYear) }
+        guard let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),
+              let endOfYear = calendar.date(byAdding: .year, value: 1, to: startOfYear) else {
+            return []
+        }
+
+        let request: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
+        request.predicate = NSPredicate(format: "user == %@ AND type == %d AND date >= %@ AND date < %@",
+                                        user, entryType.rawValue, startOfYear as NSDate, endOfYear as NSDate)
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \DailyStat.date, ascending: true)]
+
+        let stats = (try? context.fetch(request)) ?? []
+        var seenMonths = Set<Date>()
+        var months: [Date] = []
+
+        for stat in stats {
+            guard let date = stat.date else { continue }
+            let monthStart = calendar.startOfMonth(for: date)
+            if seenMonths.insert(monthStart).inserted {
+                months.append(monthStart)
+            }
+        }
+
+        return months
+    }
+
+    private func yearsWithData() -> [Int] {
+        let request: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
+        request.predicate = NSPredicate(format: "user == %@ AND type == %d", user, entryType.rawValue)
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \DailyStat.date, ascending: true)]
+
+        let stats = (try? context.fetch(request)) ?? []
+        let calendar = Calendar.current
+        let years = stats.compactMap { stat -> Int? in
+            guard let date = stat.date else { return nil }
+            return calendar.component(.year, from: date)
+        }
+
+        return Array(Set(years)).sorted()
+    }
+
+    private func alignMonthAnchorToAvailableData() {
+        let currentMonth = Calendar.current.component(.month, from: monthAnchor)
+        let currentYear = Calendar.current.component(.year, from: monthAnchor)
+
+        if monthsOfYear.isEmpty {
+            guard let fallbackYear = closestYear(to: currentYear, in: yearOptions) else { return }
+            let monthsInFallbackYear = monthsWithData(in: fallbackYear)
+            guard let fallbackMonth = closestMonth(to: currentMonth, in: monthsInFallbackYear) else { return }
+            monthAnchor = fallbackMonth
+            return
+        }
+
+        guard let closest = closestMonth(to: currentMonth, in: monthsOfYear),
+              !Calendar.current.isDate(closest, equalTo: monthAnchor, toGranularity: .month) else {
+            return
+        }
+
+        monthAnchor = closest
+    }
+
+    private func closestMonth(to month: Int, in months: [Date]) -> Date? {
+        guard !months.isEmpty else { return nil }
+
+        return months.min {
+            let lhs = abs(Calendar.current.component(.month, from: $0) - month)
+            let rhs = abs(Calendar.current.component(.month, from: $1) - month)
+            return lhs < rhs
+        }
+    }
+
+    private func closestYear(to year: Int, in years: [Int]) -> Int? {
+        guard !years.isEmpty else { return nil }
+        return years.min { abs($0 - year) < abs($1 - year) }
     }
 
     private var creationStartDate: Date {
@@ -386,7 +468,8 @@ private struct MonthSlider: View {
     }
 
     private func scrollToSelection(_ proxy: ScrollViewProxy) {
-        let index = Calendar.current.component(.month, from: selection) - 1
+        guard !months.isEmpty else { return }
+        let index = months.firstIndex(where: isSelected) ?? 0
         DispatchQueue.main.async {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
                 proxy.scrollTo(index, anchor: .center)

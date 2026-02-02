@@ -368,6 +368,8 @@ private extension MainDashboardView {
         switch method {
         case .cigarettes:
             key = "onboarding_method_cigarettes"
+        case .hookah:
+            key = "onboarding_method_hookah"
         case .heatedTobacco:
             key = "onboarding_method_heated_tobacco"
         case .snusOrPouches:

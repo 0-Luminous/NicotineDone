@@ -108,6 +108,7 @@
 "onboarding_method_title" = "Выбери способ";
 "onboarding_method_card_hint" = "Открывает форму параметров";
 "onboarding_method_cigarettes" = "Сигареты";
+"onboarding_method_hookah" = "Кальян";
 "onboarding_method_disposable_vape" = "Одноразовый вейп";
 "onboarding_method_refillable_vape" = "Заправляемый вейп";
 "onboarding_method_heated_tobacco" = "Нагреваемый табак";
@@ -178,6 +179,7 @@
 "snus_can_price_placeholder" = "Напр.: 6.50";
 
 "hint_price_per_cigarette" = "≈ цена за сигарету: %@";
+"hint_hookah_price_per_session" = "≈ цена за сессию: %@";
 "hint_price_per_100_puffs" = "Стоимость 100 затяжек: %@";
 "hint_refillable_price_per_100" = "Жидкость за 100 затяжек: %@";
 "hint_refillable_daily_cost" = "Дневная стоимость (%d затяжек): %@";
@@ -204,6 +206,7 @@
 "error_no_method_selected" = "Выбери способ употребления, чтобы продолжить.";
 "error_invalid_form" = "Исправь отмеченные поля, чтобы продолжить.";
 "onboarding_method_cigarettes_desc" = "Сигареты в день, цена пачки и стоимость затяжки.";
+"onboarding_method_hookah_desc" = "Отслеживай сессии, стоимость расходников и прогресс.";
 "onboarding_method_disposable_vape_desc" = "Следи за количеством затяжек и ценой устройства.";
 "onboarding_method_refillable_vape_desc" = "Фиксируй объём, крепость и стоимость жидкостей/койлов.";
 "onboarding_method_heated_tobacco_desc" = "Отмечай пачки стиков и ежедневное потребление.";

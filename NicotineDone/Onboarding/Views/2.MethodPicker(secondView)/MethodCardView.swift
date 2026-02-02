@@ -21,7 +21,7 @@ struct MethodCardView: View {
         GlassCard {
             HStack(alignment: .center, spacing: 20) {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(OnboardingTheme.primaryGradient)
+                    .fill(.whiteOpacity)
                     .frame(width: 70, height: 70)
                     .overlay(
                         Image(method.iconAssetName)
@@ -54,7 +54,7 @@ struct MethodCardView: View {
             }
         }
         .glassEffect(
-            .clear.interactive(),
+            .clear,
             in: .rect(cornerRadius: 24)
         )
         .accessibilityElement(children: .combine)

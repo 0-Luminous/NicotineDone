@@ -183,6 +183,13 @@ private struct SavedMethodCard: View {
                 "\(config.cigarettesPerDay) per day",
                 "\(config.cigarettesPerPack) per pack • \(price)"
             ]
+        case .hookah:
+            guard let config = profile.cigarettes else { return [] }
+            let price = CurrencyFormatterFactory.string(from: config.packPrice, currencyCode: config.currency.code)
+            return [
+                "\(config.cigarettesPerDay) sessions per day",
+                "\(config.cigarettesPerPack) sessions per pack • \(price)"
+            ]
         case .disposableVape:
             guard let config = profile.disposableVape else { return [] }
             let price = CurrencyFormatterFactory.string(from: config.devicePrice, currencyCode: config.currency.code)

@@ -131,6 +131,9 @@ struct OnboardingDetailsView: View {
         case .cigarettes:
             CigarettesFormView(primaryTextColor: primaryTextColor,
                                config: $viewModel.cigarettesConfig)
+        case .hookah:
+            CigarettesFormView(primaryTextColor: primaryTextColor,
+                               config: $viewModel.cigarettesConfig)
         case .disposableVape:
             DisposableVapeFormView(primaryTextColor: primaryTextColor,
                                    config: $viewModel.disposableVapeConfig)

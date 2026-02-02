@@ -108,6 +108,7 @@
 "onboarding_method_title" = "Choose your method";
 "onboarding_method_card_hint" = "Opens detailed setup";
 "onboarding_method_cigarettes" = "Cigarettes";
+"onboarding_method_hookah" = "Hookah";
 "onboarding_method_disposable_vape" = "Disposable vape";
 "onboarding_method_refillable_vape" = "Refillable vape";
 "onboarding_method_heated_tobacco" = "Heated tobacco";
@@ -178,6 +179,7 @@
 "snus_can_price_placeholder" = "Ex: 6.50";
 
 "hint_price_per_cigarette" = "Approximate price per cigarette: %@";
+"hint_hookah_price_per_session" = "Approximate price per session: %@";
 "hint_price_per_100_puffs" = "Cost per 100 puffs: %@";
 "hint_refillable_price_per_100" = "Liquid cost per 100 puffs: %@";
 "hint_refillable_daily_cost" = "Estimated daily cost (%d puffs): %@";
@@ -204,6 +206,7 @@
 "error_no_method_selected" = "Select a nicotine method to continue.";
 "error_invalid_form" = "Please fix the highlighted fields before continuing.";
 "onboarding_method_cigarettes_desc" = "Daily cigarettes, pack price, per-stick insights.";
+"onboarding_method_hookah_desc" = "Track sessions, spend, and consistency over time.";
 "onboarding_method_disposable_vape_desc" = "Track puff count and device cost.";
 "onboarding_method_refillable_vape_desc" = "Log liquid volume, nicotine strength, coils.";
 "onboarding_method_heated_tobacco_desc" = "Monitor stick packs and daily habits.";

@@ -338,7 +338,7 @@ private extension SettingsView {
 
     func productType(for method: NicotineMethod) -> ProductType {
         switch method {
-        case .cigarettes, .heatedTobacco, .snusOrPouches:
+        case .cigarettes, .hookah, .heatedTobacco, .snusOrPouches:
             return .cigarette
         case .disposableVape, .refillableVape:
             return .vape
@@ -349,6 +349,8 @@ private extension SettingsView {
         switch profile.method {
         case .cigarettes:
             return profile.cigarettes?.cigarettesPerDay ?? 10
+        case .hookah:
+            return profile.cigarettes?.cigarettesPerDay ?? 3
         case .disposableVape:
             guard let config = profile.disposableVape else { return 150 }
             let computed = max(80, config.puffsPerDevice / 5)
@@ -367,6 +369,8 @@ private extension SettingsView {
         switch profile.method {
         case .cigarettes:
             return profile.cigarettes?.cigarettesPerPack ?? 20
+        case .hookah:
+            return profile.cigarettes?.cigarettesPerPack ?? 1
         case .disposableVape:
             return profile.disposableVape?.puffsPerDevice ?? 600
         case .refillableVape:
@@ -381,6 +385,9 @@ private extension SettingsView {
     func packCost(for profile: NicotineProfile) -> Double {
         switch profile.method {
         case .cigarettes:
+            guard let price = profile.cigarettes?.packPrice else { return 0 }
+            return NSDecimalNumber(decimal: price).doubleValue
+        case .hookah:
             guard let price = profile.cigarettes?.packPrice else { return 0 }
             return NSDecimalNumber(decimal: price).doubleValue
         case .disposableVape:

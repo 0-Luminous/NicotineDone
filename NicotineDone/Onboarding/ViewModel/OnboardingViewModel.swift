@@ -52,6 +52,8 @@ final class OnboardingViewModel: ObservableObject {
         switch method {
         case .cigarettes:
             cigarettesConfig.currency = currency
+        case .hookah:
+            cigarettesConfig.currency = currency
         case .disposableVape:
             disposableVapeConfig.currency = currency
         case .refillableVape:
@@ -78,6 +80,7 @@ final class OnboardingViewModel: ObservableObject {
     func currency(for method: NicotineMethod) -> Currency {
         switch method {
         case .cigarettes: return cigarettesConfig.currency
+        case .hookah: return cigarettesConfig.currency
         case .disposableVape: return disposableVapeConfig.currency
         case .refillableVape: return refillableVapeConfig.currency
         case .heatedTobacco: return heatedTobaccoConfig.currency
@@ -113,6 +116,8 @@ final class OnboardingViewModel: ObservableObject {
         switch method {
         case .cigarettes:
             profile.cigarettes = cigarettesConfig
+        case .hookah:
+            profile.cigarettes = cigarettesConfig
         case .disposableVape:
             profile.disposableVape = disposableVapeConfig
         case .refillableVape:
@@ -135,6 +140,12 @@ final class OnboardingViewModel: ObservableObject {
             let perStick = cigarettesConfig.packPrice / Decimal(cigarettesConfig.cigarettesPerPack)
             let formatted = CurrencyFormatterFactory.string(from: perStick, currencyCode: cigarettesConfig.currency.code)
             return [localized("hint_price_per_cigarette", formatted)]
+        case .hookah:
+            guard cigarettesConfig.packPrice > 0,
+                  cigarettesConfig.cigarettesPerPack > 0 else { return [] }
+            let perSession = cigarettesConfig.packPrice / Decimal(cigarettesConfig.cigarettesPerPack)
+            let formatted = CurrencyFormatterFactory.string(from: perSession, currencyCode: cigarettesConfig.currency.code)
+            return [localized("hint_hookah_price_per_session", formatted)]
         case .disposableVape:
             guard disposableVapeConfig.devicePrice > 0,
                   disposableVapeConfig.puffsPerDevice > 0 else { return [] }
@@ -176,6 +187,7 @@ final class OnboardingViewModel: ObservableObject {
         guard let method = selectedMethod else { return nil }
         switch method {
         case .cigarettes: return cigarettesConfig
+        case .hookah: return cigarettesConfig
         case .disposableVape: return disposableVapeConfig
         case .refillableVape: return refillableVapeConfig
         case .heatedTobacco: return heatedTobaccoConfig
@@ -214,7 +226,7 @@ final class OnboardingViewModel: ObservableObject {
     private func warningMessages(for method: NicotineMethod?) -> [String] {
         guard let method else { return [] }
         switch method {
-        case .cigarettes:
+        case .cigarettes, .hookah:
             if let warning = cigarettesConfig.consumptionWarning {
                 return [warning]
             }

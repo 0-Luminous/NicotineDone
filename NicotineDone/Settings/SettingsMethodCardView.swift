@@ -75,7 +75,7 @@ struct SettingsMethodCardView: View {
         // .shadow(color: cardShadowColor, radius: 22, x: 0, y: 14)
         .accessibilityElement(children: .combine)
         .glassEffect(
-            .clear.interactive(),
+            .clear,
             in: .rect(cornerRadius: 24)
             )
     }

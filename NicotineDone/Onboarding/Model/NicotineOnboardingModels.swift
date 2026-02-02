@@ -39,6 +39,7 @@ enum OnboardingMode: String, CaseIterable, Identifiable {
 
 enum NicotineMethod: String, Codable, CaseIterable, Identifiable {
     case cigarettes
+    case hookah
     case disposableVape = "disposable_vape"
     case refillableVape = "refillable_vape"
     case heatedTobacco = "heated_tobacco"
@@ -49,6 +50,7 @@ enum NicotineMethod: String, Codable, CaseIterable, Identifiable {
     var localizationKey: String {
         switch self {
         case .cigarettes: return "onboarding_method_cigarettes"
+        case .hookah: return "onboarding_method_hookah"
         case .disposableVape: return "onboarding_method_disposable_vape"
         case .refillableVape: return "onboarding_method_refillable_vape"
         case .heatedTobacco: return "onboarding_method_heated_tobacco"
@@ -59,10 +61,11 @@ enum NicotineMethod: String, Codable, CaseIterable, Identifiable {
     var iconAssetName: String {
         switch self {
         case .cigarettes: return "CigaretteH"
+        case .hookah: return "Hookah"
         case .disposableVape: return "Disposable vapeH"
         case .refillableVape: return "RefillableVapeH"
         case .heatedTobacco: return "HeatingDeviceH"
-        case .snusOrPouches: return "SnusPouchH"
+        case .snusOrPouches: return "SnusH"
         }
     }
 }
@@ -134,6 +137,7 @@ struct NicotineProfile: Codable, Equatable {
     var selectedCurrency: Currency {
         switch method {
         case .cigarettes: return cigarettes?.currency ?? .default
+        case .hookah: return cigarettes?.currency ?? .default
         case .disposableVape: return disposableVape?.currency ?? .default
         case .refillableVape: return refillableVape?.currency ?? .default
         case .heatedTobacco: return heatedTobacco?.currency ?? .default

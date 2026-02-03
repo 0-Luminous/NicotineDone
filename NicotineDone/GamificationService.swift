@@ -145,18 +145,19 @@ final class GamificationService {
         return max(Int64(withinLimitDays), Int64(goodDays))
     }
 
-    func financialOverview(for user: User) -> FinancialOverview {
+    func financialOverview(for user: User, days: Int = 30) -> FinancialOverview {
+        let periodDays = max(1, days)
         let entryType = user.product.entryType
-        let totals = stats.totalsForLastDays(user: user, days: 30, type: entryType)
+        let totals = stats.totalsForLastDays(user: user, days: periodDays, type: entryType)
         let totalUnits = totals.values.reduce(0, +)
         let samples = max(1, totals.count)
         let averagePerDay = Double(totalUnits) / Double(samples)
 
         let unitCost = inferredCostPerUnit(for: user, entryType: entryType)
-        let monthlyMultiplier = 30.0
+        let periodMultiplier = Double(periodDays)
 
-        let actualMonthly = max(0, averagePerDay * unitCost * monthlyMultiplier)
-        let baselineMonthly = max(0, Double(user.dailyLimit) * unitCost * monthlyMultiplier)
+        let actualMonthly = max(0, averagePerDay * unitCost * periodMultiplier)
+        let baselineMonthly = max(0, Double(user.dailyLimit) * unitCost * periodMultiplier)
         let savings = max(0, baselineMonthly - actualMonthly)
 
         let currencyCode = user.currencyCode ?? Locale.current.currencyCode ?? "USD"

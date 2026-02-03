@@ -56,6 +56,11 @@
 
 /* Экран статистики */
 "stats_chart_weekly_trend" = "Недельная динамика";
+"stats_chart_trend" = "Динамика";
+"stats_chart_range_today" = "Сегодня";
+"stats_chart_range_week" = "Неделя";
+"stats_chart_range_month" = "Месяц";
+"stats_chart_range_year" = "Год";
 "stats_chart_axis_day" = "День";
 "stats_chart_axis_count" = "Количество";
 "stats_chart_more_data_needed" = "Для статистики требуется больше данных";
@@ -64,8 +69,24 @@
 "stats_financial_limit_label" = "Месячный лимит";
 "stats_financial_spent_title" = "Потрачено за месяц";
 "stats_financial_saved_title" = "Сэкономлено за месяц";
+"stats_financial_subtitle_today" = "За сегодня";
+"stats_financial_subtitle_week" = "За последние 7 дней";
+"stats_financial_subtitle_month" = "За последние 30 дней";
+"stats_financial_subtitle_year" = "За последние 365 дней";
+"stats_financial_limit_label_today" = "Дневной лимит";
+"stats_financial_limit_label_week" = "Недельный лимит";
+"stats_financial_limit_label_month" = "Месячный лимит";
+"stats_financial_limit_label_year" = "Годовой лимит";
+"stats_financial_spent_title_today" = "Потрачено за сегодня";
+"stats_financial_spent_title_week" = "Потрачено за неделю";
+"stats_financial_spent_title_month" = "Потрачено за месяц";
+"stats_financial_spent_title_year" = "Потрачено за год";
+"stats_financial_saved_title_today" = "Сэкономлено за сегодня";
+"stats_financial_saved_title_week" = "Сэкономлено за неделю";
+"stats_financial_saved_title_month" = "Сэкономлено за месяц";
+"stats_financial_saved_title_year" = "Сэкономлено за год";
 "stats_financial_set_limit_hint" = "Укажи лимит для сравнения";
-"stats_financial_spent_percent" = "%d%% от месячного лимита";
+"stats_financial_spent_percent" = "%d%% от лимита";
 "stats_financial_savings_positive" = "Держишься ниже лимита";
 "stats_financial_savings_negative" = "Отмечай стабильно, чтобы увидеть экономию";
 "stats_metrics_title" = "Ежедневная аналитика";

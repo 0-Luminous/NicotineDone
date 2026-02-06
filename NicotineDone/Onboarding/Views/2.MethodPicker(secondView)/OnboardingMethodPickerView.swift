@@ -23,7 +23,7 @@ struct OnboardingMethodPickerView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("onboarding_step_one")
+                        Text("onboarding_step_two")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(secondaryTextColor.opacity(0.9))
                         Text("onboarding_method_card_hint_copy")

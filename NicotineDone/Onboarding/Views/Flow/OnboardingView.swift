@@ -4,6 +4,7 @@ struct OnboardingView: View {
     @EnvironmentObject private var appViewModel: AppViewModel
     @StateObject private var viewModel = OnboardingViewModel()
     @State private var path: [OnboardingRoute] = []
+    @Namespace private var linesNamespace
 
     private let appName = "NicotineDone"
 
@@ -12,16 +13,19 @@ struct OnboardingView: View {
             OnboardingWelcomeView(appName: appName,
                                   selectedMode: Binding(
                                     get: { viewModel.selectedMode },
-                                    set: { viewModel.selectedMode = $0 })
-            ) {
-                path.append(.methodPicker)
-            }
+                                    set: { viewModel.selectedMode = $0 }),
+                                  onStart: { path.append(.themePicker) },
+                                  linesNamespace: linesNamespace)
             .navigationDestination(for: OnboardingRoute.self) { route in
                 switch route {
+                case .themePicker:
+                    OnboardingThemePickerView(linesNamespace: linesNamespace) {
+                        path = [.themePicker, .methodPicker]
+                    }
                 case .methodPicker:
                     OnboardingMethodPickerView(selectedMethod: viewModel.selectedMethod) { method in
                         viewModel.select(method: method)
-                        path = [.methodPicker, .methodDetails(method)]
+                        path = [.themePicker, .methodPicker, .methodDetails(method)]
                     }
                     .navigationTitle(Text("onboarding_method_title"))
                     .navigationBarTitleDisplayMode(.large)
@@ -31,7 +35,7 @@ struct OnboardingView: View {
                                           supportedCurrencies: viewModel.currencyOptions) { profile in
                         appViewModel.completeOnboarding(with: profile)
                     } onBack: {
-                        path = [.methodPicker]
+                        path = [.themePicker, .methodPicker]
                     }
                     .navigationBarBackButtonHidden()
                 }
@@ -42,6 +46,7 @@ struct OnboardingView: View {
 }
 
 private enum OnboardingRoute: Hashable {
+    case themePicker
     case methodPicker
     case methodDetails(NicotineMethod)
 }

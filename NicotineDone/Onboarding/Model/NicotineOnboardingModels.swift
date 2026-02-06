@@ -97,6 +97,34 @@ struct CigarettesConfig: Codable, Equatable {
     var currency: Currency = .default
 }
 
+extension CigarettesConfig {
+    static let hookahPacksPerSessionOptions: [Decimal] = [
+        0.25, 0.5, 0.75, 1, 2, 3, 4, 5
+    ]
+
+    private static let hookahStorageValues: Set<Int> = [
+        25, 50, 75, 100, 200, 300, 400, 500
+    ]
+
+    static func isValidHookahStorageValue(_ storage: Int) -> Bool {
+        hookahStorageValues.contains(storage)
+    }
+
+    static func hookahStorageValue(for value: Decimal) -> Int {
+        let number = NSDecimalNumber(decimal: value * 100)
+        return number.intValue
+    }
+
+    static func hookahDecimalValue(for storage: Int) -> Decimal {
+        guard hookahStorageValues.contains(storage) else { return 1 }
+        return Decimal(storage) / 100
+    }
+
+    var hookahPacksPerSession: Decimal {
+        Self.hookahDecimalValue(for: cigarettesPerPack)
+    }
+}
+
 struct DisposableVapeConfig: Codable, Equatable {
     var puffsPerDevice: Int = 600
     var devicePrice: Decimal = 12
@@ -175,6 +203,30 @@ extension CigarettesConfig: OnboardingValidatable {
         guard cigarettesPerPack > 0,
               cigarettesPerDay > cigarettesPerPack * 2 else { return nil }
         return String(localized: "warning_cigarettes_high_consumption")
+    }
+}
+
+struct HookahValidator: OnboardingValidatable {
+    let config: CigarettesConfig
+
+    var validationMessages: [String] {
+        var messages: [String] = []
+        if config.cigarettesPerDay < 1 || config.cigarettesPerDay > 21 {
+            messages.append(String(localized: "validation_hookah_sessions_per_week"))
+        }
+        if !CigarettesConfig.isValidHookahStorageValue(config.cigarettesPerPack) {
+            messages.append(String(localized: "validation_hookah_packs_per_session"))
+        }
+        if config.packPrice <= 0 {
+            messages.append(String(localized: "validation_pack_price_positive"))
+        }
+        return messages
+    }
+}
+
+extension HookahValidator {
+    static func from(_ config: CigarettesConfig) -> HookahValidator {
+        HookahValidator(config: config)
     }
 }
 

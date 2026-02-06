@@ -65,7 +65,9 @@ final class AppViewModel: ObservableObject {
         case .cigarettes:
             return profile.cigarettes?.cigarettesPerDay ?? 10
         case .hookah:
-            return profile.cigarettes?.cigarettesPerDay ?? 3
+            let sessionsPerWeek = profile.cigarettes?.cigarettesPerDay ?? 3
+            let perDay = Double(sessionsPerWeek) / 7.0
+            return max(1, Int(ceil(perDay)))
         case .disposableVape:
             guard let config = profile.disposableVape else { return 150 }
             let computed = max(80, config.puffsPerDevice / 5)
@@ -85,7 +87,7 @@ final class AppViewModel: ObservableObject {
         case .cigarettes:
             return profile.cigarettes?.cigarettesPerPack ?? 20
         case .hookah:
-            return profile.cigarettes?.cigarettesPerPack ?? 1
+            return 1
         case .disposableVape:
             return profile.disposableVape?.puffsPerDevice ?? 600
         case .refillableVape:
@@ -103,8 +105,9 @@ final class AppViewModel: ObservableObject {
             guard let price = profile.cigarettes?.packPrice else { return 0 }
             return NSDecimalNumber(decimal: price).doubleValue
         case .hookah:
-            guard let price = profile.cigarettes?.packPrice else { return 0 }
-            return NSDecimalNumber(decimal: price).doubleValue
+            guard let config = profile.cigarettes else { return 0 }
+            let total = config.packPrice * config.hookahPacksPerSession
+            return NSDecimalNumber(decimal: total).doubleValue
         case .disposableVape:
             guard let price = profile.disposableVape?.devicePrice else { return 0 }
             return NSDecimalNumber(decimal: price).doubleValue

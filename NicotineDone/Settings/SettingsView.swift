@@ -16,9 +16,7 @@ struct SettingsView: View {
     @State private var latestProfile: NicotineProfile?
     @State private var dailyLimit: Double = 10
     @State private var showMethodPicker = false
-    @State private var showModePicker = false
     @State private var showAppearancePicker = false
-    @State private var selectedMode: OnboardingMode = .tracking
     @State private var appearancePickerMode: ColorScheme? = nil
     @State private var storedProfiles: [NicotineProfile] = []
     @AppStorage("appPreferredColorScheme") private var appPreferredColorSchemeRaw: Int = 0
@@ -49,7 +47,7 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         trackingSection
-                        guidanceSection
+                        achievementsSection
                         appearanceSection
                         resetSection
                     }
@@ -103,9 +101,6 @@ struct SettingsView: View {
                 }
             )
         }
-        .fullScreenCover(isPresented: $showModePicker) {
-            modePickerScreen
-        }
         .sheet(isPresented: $showAppearancePicker) {
             SettingsAppearancePickerSheet(
                 appearancePickerMode: $appearancePickerMode,
@@ -125,7 +120,6 @@ struct SettingsView: View {
             selectedMethod = nicotineMethod(for: ProductType(rawValue: user.productType) ?? .cigarette)
         }
         dailyLimit = Double(user.dailyLimit)
-        selectedMode = .tracking
     }
 
     private func save() {
@@ -238,15 +232,50 @@ private extension SettingsView {
         }
     }
 
-    var guidanceSection: some View {
-        settingsCard(title: "App mode") {
-            VStack(alignment: .leading, spacing: 16) {
-                ModeSpotlightCardView(mode: selectedMode,
-                                      arrowColor: primaryTextColor) {
-                    showModePicker = true
+    var achievementsSection: some View {
+        settingsCard(title: "Achievements") {
+            NavigationLink {
+                AchievementsScreen(user: user)
+            } label: {
+                HStack(spacing: 16) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .frame(width: 64, height: 64)
+                            .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+
+                        Image(systemName: "medal.fill")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(primaryTextColor)
+                            .shadow(color: .white.opacity(0.5), radius: 12)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Achievements")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(primaryTextColor)
+                        Text("View your progress and unlocked badges.")
+                            .font(.caption)
+                            .foregroundStyle(primaryTextColor.opacity(0.8))
+                    }
                 }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 24))
                 .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 8)
             }
+            .overlay(alignment: .trailing) {
+                Circle()
+                    .glassEffect(.clear)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(primaryTextColor)
+                    )
+                    .padding(12)
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -279,28 +308,6 @@ private extension SettingsView {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    var modePickerScreen: some View {
-        ZStack(alignment: .topTrailing) {
-            OnboardingWelcomeView(appName: "SmokeTracker",
-                                  selectedMode: $selectedMode) {
-                showModePicker = false
-            }
-            .preferredColorScheme(.dark)
-
-            Button {
-                showModePicker = false
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .shadow(radius: 8)
-                    .padding(10)
-                    .glassEffect(.clear.interactive())
-            }
-            .padding(.trailing, 20)
-        }
     }
 
     var methodSelectionCard: some View {
@@ -350,7 +357,9 @@ private extension SettingsView {
         case .cigarettes:
             return profile.cigarettes?.cigarettesPerDay ?? 10
         case .hookah:
-            return profile.cigarettes?.cigarettesPerDay ?? 3
+            let sessionsPerWeek = profile.cigarettes?.cigarettesPerDay ?? 3
+            let perDay = Double(sessionsPerWeek) / 7.0
+            return max(1, Int(ceil(perDay)))
         case .disposableVape:
             guard let config = profile.disposableVape else { return 150 }
             let computed = max(80, config.puffsPerDevice / 5)
@@ -370,7 +379,7 @@ private extension SettingsView {
         case .cigarettes:
             return profile.cigarettes?.cigarettesPerPack ?? 20
         case .hookah:
-            return profile.cigarettes?.cigarettesPerPack ?? 1
+            return 1
         case .disposableVape:
             return profile.disposableVape?.puffsPerDevice ?? 600
         case .refillableVape:
@@ -388,8 +397,9 @@ private extension SettingsView {
             guard let price = profile.cigarettes?.packPrice else { return 0 }
             return NSDecimalNumber(decimal: price).doubleValue
         case .hookah:
-            guard let price = profile.cigarettes?.packPrice else { return 0 }
-            return NSDecimalNumber(decimal: price).doubleValue
+            guard let config = profile.cigarettes else { return 0 }
+            let total = config.packPrice * config.hookahPacksPerSession
+            return NSDecimalNumber(decimal: total).doubleValue
         case .disposableVape:
             guard let price = profile.disposableVape?.devicePrice else { return 0 }
             return NSDecimalNumber(decimal: price).doubleValue

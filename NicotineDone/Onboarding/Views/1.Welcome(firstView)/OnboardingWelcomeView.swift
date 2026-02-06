@@ -4,11 +4,14 @@ struct OnboardingWelcomeView: View {
     let appName: String
     @Binding var selectedMode: OnboardingMode
     let onStart: () -> Void
+    let linesNamespace: Namespace.ID
 
     var body: some View {
         GeometryReader { proxy in
             ZStack {
                 backgroundLayer(size: proxy.size)
+                OnboardingLinesView(size: proxy.size, layout: .center, namespace: linesNamespace)
+                transitionSourceAnchor(size: proxy.size)
                 WelcomeSlide(appName: appName,
                              onStart: onStart,
                              safeAreaInsets: proxy.safeAreaInsets)
@@ -19,9 +22,17 @@ struct OnboardingWelcomeView: View {
     }
 
     private func backgroundLayer(size: CGSize) -> some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            WaveBackdropView(size: size)
+        Color.black.ignoresSafeArea()
+    }
+
+    @ViewBuilder
+    private func transitionSourceAnchor(size: CGSize) -> some View {
+        if #available(iOS 17.0, *) {
+            Circle()
+                .fill(Color.clear)
+                .frame(width: 12, height: 12)
+                .position(x: size.width - 20, y: size.height * 0.26)
+                .matchedTransitionSource(id: "linesZoomAnchor", in: linesNamespace)
         }
     }
 }
@@ -102,48 +113,10 @@ private struct WelcomeSlide: View {
     }
 }
 
-private struct WaveBackdropView: View {
-    let size: CGSize
-
-    var body: some View {
-        ZStack {
-            waveLine(color: Color(hex: "#f08d0c"), lineWidth: 4, phase: 0.2, amplitude: 22, verticalOffset: -20)
-            waveLine(color: Color(hex: "#11e17c"), lineWidth: 4, phase: 1.5, amplitude: 60, verticalOffset: 24)
-            waveLine(color: Color(hex: "#11b8e1"), lineWidth: 4, phase: 1.1, amplitude: 30, verticalOffset: 14)
-            waveLine(color: Color(hex: "#b1b1b1"), lineWidth: 4, phase: 2.0, amplitude: 18, verticalOffset: 44)
-        }
-        .frame(width: size.width, height: size.height, alignment: .center)
-        .allowsHitTesting(false)
-    }
-
-    private func waveLine(color: Color,
-                          lineWidth: CGFloat,
-                          phase: CGFloat,
-                          amplitude: CGFloat,
-                          verticalOffset: CGFloat) -> some View
-    {
-        Path { path in
-            let width = size.width + 40
-            let midY = size.height * 0.32 + verticalOffset
-            let startX: CGFloat = -20
-            let step: CGFloat = 16
-            path.move(to: CGPoint(x: startX, y: midY))
-            var x = startX
-            while x <= width {
-                let progress = x / size.width
-                let y = midY + sin((progress * .pi * 2) + phase) * amplitude
-                path.addLine(to: CGPoint(x: x, y: y))
-                x += step
-            }
-        }
-        .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
-        .shadow(color: color.opacity(0.25), radius: 6, x: 0, y: 4)
-    }
-}
-
 #Preview("Welcome - EN") {
     OnboardingWelcomeView(appName: "NicotineDone",
                           selectedMode: .constant(.tracking),
-                          onStart: {})
+                          onStart: {},
+                          linesNamespace: Namespace().wrappedValue)
         .environment(\.locale, .init(identifier: "en"))
 }

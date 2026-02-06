@@ -40,6 +40,53 @@ struct CigarettesFormView: View {
     }
 }
 
+struct HookahFormView: View {
+    let primaryTextColor: Color
+    @Binding var config: CigarettesConfig
+
+    var body: some View {
+        VStack(spacing: 24) {
+            GlassSection("onboarding_section_consumption") {
+                IntegerSliderField(titleKey: "hookah_sessions_per_week_title",
+                                   subtitleKey: "hookah_sessions_per_week_subtitle",
+                                   value: $config.cigarettesPerDay,
+                                   range: 1...21,
+                                   rangeDescriptionKey: "hookah_sessions_per_week_range",
+                                   primaryTextColor: primaryTextColor)
+                DecimalOptionsField(titleKey: "hookah_packs_per_session_title",
+                                    subtitleKey: "hookah_packs_per_session_subtitle",
+                                    value: packsPerSessionBinding,
+                                    options: CigarettesConfig.hookahPacksPerSessionOptions,
+                                    rangeDescriptionKey: "hookah_packs_per_session_range",
+                                    primaryTextColor: primaryTextColor)
+            }
+
+            GlassSection("onboarding_section_cost") {
+                DecimalField(titleKey: "hookah_pack_price_title",
+                             placeholderKey: "hookah_pack_price_placeholder",
+                             value: $config.packPrice,
+                             primaryTextColor: primaryTextColor)
+                InfoTipView(textKey: "hookah_pack_price_tip",
+                            primaryTextColor: primaryTextColor)
+            }
+            .onChange(of: config.packPrice) { newValue in
+                if newValue > priceLimit {
+                    config.packPrice = priceLimit
+                }
+            }
+        }
+    }
+
+    private var packsPerSessionBinding: Binding<Decimal> {
+        Binding(
+            get: { CigarettesConfig.hookahDecimalValue(for: config.cigarettesPerPack) },
+            set: { newValue in
+                config.cigarettesPerPack = CigarettesConfig.hookahStorageValue(for: newValue)
+            }
+        )
+    }
+}
+
 struct DisposableVapeFormView: View {
     let primaryTextColor: Color
     @Binding var config: DisposableVapeConfig
@@ -302,6 +349,61 @@ private struct DecimalField: View {
                 .glassInputStyle()
                 .foregroundStyle(primaryTextColor)
         }
+    }
+}
+
+private struct DecimalOptionsField: View {
+    let titleKey: LocalizedStringKey
+    let subtitleKey: LocalizedStringKey?
+    @Binding var value: Decimal
+    let options: [Decimal]
+    let rangeDescriptionKey: LocalizedStringKey?
+    let primaryTextColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(titleKey)
+                .font(.headline)
+                .foregroundStyle(primaryTextColor)
+
+            if let subtitleKey {
+                Text(subtitleKey)
+                    .font(.subheadline)
+                    .foregroundStyle(primaryTextColor.opacity(0.7))
+            }
+
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button(decimalText(option)) {
+                        value = option
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(decimalText(value))
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(primaryTextColor)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .foregroundStyle(primaryTextColor.opacity(0.7))
+                }
+                .glassInputStyle()
+            }
+
+            if let rangeDescriptionKey {
+                Text(rangeDescriptionKey)
+                    .font(.footnote)
+                    .foregroundStyle(primaryTextColor.opacity(0.6))
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func decimalText(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSDecimalNumber(decimal: value)) ?? "\(value)"
     }
 }
 

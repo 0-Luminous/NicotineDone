@@ -32,7 +32,9 @@ struct SettingsAppearancePickerSheet: View {
                               spacing: 16) {
                         ForEach(DashboardBackgroundStyle.appearanceOptions) { style in
                             let isSelected = self.isSelected(style)
+                            let isLocked = !allowedStyles.contains(style)
                             Button {
+                                guard !isLocked else { return }
                                 backgroundIndexLight = style.rawValue
                                 backgroundIndexDark = style.rawValue
                             } label: {
@@ -48,11 +50,29 @@ struct SettingsAppearancePickerSheet: View {
                                                     .offset(x: -8, y: 8)
                                             }
                                         }
+                                        .overlay(alignment: .center) {
+                                            if isLocked {
+                                                Image(systemName: "lock.fill")
+                                                    .font(.system(size: 18, weight: .semibold))
+                                                    .foregroundStyle(.white)
+                                                    .shadow(radius: 6)
+                                            }
+                                        }
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                                .fill(Color.black.opacity(isLocked ? 0.35 : 0))
+                                        )
 
                                     Text(style.name)
                                         .font(.footnote.weight(isSelected ? .semibold : .regular))
                                         .foregroundStyle(isSelected ? .primary : .secondary)
                                         .lineLimit(1)
+                                    if isLocked {
+                                        Text("Unlock via achievements")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(12)
@@ -63,6 +83,7 @@ struct SettingsAppearancePickerSheet: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .disabled(isLocked)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -107,6 +128,10 @@ struct SettingsAppearancePickerSheet: View {
 
     private func isSelected(_ style: DashboardBackgroundStyle) -> Bool {
         backgroundIndexLight == style.rawValue && backgroundIndexDark == style.rawValue
+    }
+
+    private var allowedStyles: Set<DashboardBackgroundStyle> {
+        [.classic, .oceanDeep, .sunrise, .virentia]
     }
 
     private static func preferredColorScheme(from raw: Int) -> ColorScheme? {

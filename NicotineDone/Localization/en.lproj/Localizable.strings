@@ -115,7 +115,7 @@
 "onboarding_welcome_title" = "Welcome to %@";
 "onboarding_welcome_subtitle" = "Track nicotine, spending, and progress in one place.";
 "onboarding_primary_cta" = "Get started";
-"onboarding_primary_cta_hint" = "Opens nicotine method selection";
+"onboarding_primary_cta_hint" = "Opens theme selection";
 "onboarding_mode_coming_soon" = "Coming soon";
 "onboarding_mode_picker_title" = "Choose your mode";
 "onboarding_mode_picker_subtitle" = "Swipe to match how you plan to use the app.";
@@ -144,8 +144,12 @@
 "onboarding_continue" = "Continue";
 "onboarding_welcome_hint" = "Swipe or tap later to finish setup anytime in settings.";
 "onboarding_step_one" = "Step 1";
+"onboarding_step_two" = "Step 2";
 "onboarding_method_card_hint_copy" = "Choose what you want to keep an eye on first.";
 "onboarding_currency_search_placeholder" = "Search currency";
+"onboarding_theme_title" = "Choose your theme";
+"onboarding_theme_subtitle" = "Pick the look you want to see every day.";
+"onboarding_theme_cta" = "Next";
 "back_button" = "Back";
 
 "cigarettes_per_day_title" = "How many cigarettes per day?";
@@ -157,6 +161,15 @@
 "pack_price_title" = "Pack price";
 "pack_price_placeholder" = "Ex: 7.50";
 "pack_price_tip" = "Use your usual store price to calculate per-cigarette costs.";
+"hookah_sessions_per_week_title" = "Sessions per week";
+"hookah_sessions_per_week_subtitle" = "Average hookah sessions each week.";
+"hookah_sessions_per_week_range" = "Recommended: 1-21.";
+"hookah_packs_per_session_title" = "Packs per session";
+"hookah_packs_per_session_subtitle" = "How many packs you usually use per session.";
+"hookah_packs_per_session_range" = "Options: 0.25, 0.5, 0.75, 1, 2, 3, 4, 5.";
+"hookah_pack_price_title" = "Pack price";
+"hookah_pack_price_placeholder" = "E.g.: 15.00";
+"hookah_pack_price_tip" = "Use your usual tobacco price to estimate cost per session.";
 
 "puffs_per_device_title" = "Puffs per device";
 "puffs_per_device_subtitle" = "Check the number printed on the box.";
@@ -210,6 +223,8 @@
 "validation_cigarettes_per_day" = "Daily cigarettes must be between 1 and 99.";
 "validation_cigarettes_per_pack" = "Pack size must be between 10 and 40.";
 "validation_pack_price_positive" = "Pack price must be greater than 0.";
+"validation_hookah_sessions_per_week" = "Sessions per week must be between 1 and 21.";
+"validation_hookah_packs_per_session" = "Packs per session must be one of the listed options.";
 "warning_cigarettes_high_consumption" = "Your daily amount is more than twice the pack size. Make sure this is intentional.";
 "validation_puffs_range" = "Enter 600-10000 puffs per device.";
 "validation_device_price_positive" = "Device price must be greater than 0.";

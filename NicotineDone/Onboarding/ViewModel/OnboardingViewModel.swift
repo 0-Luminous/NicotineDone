@@ -44,6 +44,14 @@ final class OnboardingViewModel: ObservableObject {
 
     func select(method: NicotineMethod) {
         selectedMethod = method
+        if method == .hookah {
+            if cigarettesConfig.cigarettesPerDay < 1 || cigarettesConfig.cigarettesPerDay > 21 {
+                cigarettesConfig.cigarettesPerDay = 3
+            }
+            if !CigarettesConfig.isValidHookahStorageValue(cigarettesConfig.cigarettesPerPack) {
+                cigarettesConfig.cigarettesPerPack = CigarettesConfig.hookahStorageValue(for: 1)
+            }
+        }
         refreshValidation()
     }
 
@@ -141,9 +149,9 @@ final class OnboardingViewModel: ObservableObject {
             let formatted = CurrencyFormatterFactory.string(from: perStick, currencyCode: cigarettesConfig.currency.code)
             return [localized("hint_price_per_cigarette", formatted)]
         case .hookah:
-            guard cigarettesConfig.packPrice > 0,
-                  cigarettesConfig.cigarettesPerPack > 0 else { return [] }
-            let perSession = cigarettesConfig.packPrice / Decimal(cigarettesConfig.cigarettesPerPack)
+            guard cigarettesConfig.packPrice > 0 else { return [] }
+            let packsPerSession = cigarettesConfig.hookahPacksPerSession
+            let perSession = cigarettesConfig.packPrice * packsPerSession
             let formatted = CurrencyFormatterFactory.string(from: perSession, currencyCode: cigarettesConfig.currency.code)
             return [localized("hint_hookah_price_per_session", formatted)]
         case .disposableVape:
@@ -187,7 +195,7 @@ final class OnboardingViewModel: ObservableObject {
         guard let method = selectedMethod else { return nil }
         switch method {
         case .cigarettes: return cigarettesConfig
-        case .hookah: return cigarettesConfig
+        case .hookah: return HookahValidator.from(cigarettesConfig)
         case .disposableVape: return disposableVapeConfig
         case .refillableVape: return refillableVapeConfig
         case .heatedTobacco: return heatedTobaccoConfig
@@ -226,7 +234,7 @@ final class OnboardingViewModel: ObservableObject {
     private func warningMessages(for method: NicotineMethod?) -> [String] {
         guard let method else { return [] }
         switch method {
-        case .cigarettes, .hookah:
+        case .cigarettes:
             if let warning = cigarettesConfig.consumptionWarning {
                 return [warning]
             }

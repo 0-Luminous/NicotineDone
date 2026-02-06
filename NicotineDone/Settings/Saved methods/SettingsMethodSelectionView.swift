@@ -185,10 +185,12 @@ private struct SavedMethodCard: View {
             ]
         case .hookah:
             guard let config = profile.cigarettes else { return [] }
-            let price = CurrencyFormatterFactory.string(from: config.packPrice, currencyCode: config.currency.code)
+            let perSessionCost = config.packPrice * config.hookahPacksPerSession
+            let price = CurrencyFormatterFactory.string(from: perSessionCost, currencyCode: config.currency.code)
+            let packsPerSession = decimalString(config.hookahPacksPerSession)
             return [
-                "\(config.cigarettesPerDay) sessions per day",
-                "\(config.cigarettesPerPack) sessions per pack • \(price)"
+                "\(config.cigarettesPerDay) sessions per week",
+                "\(packsPerSession) packs per session • \(price)"
             ]
         case .disposableVape:
             guard let config = profile.disposableVape else { return [] }
@@ -225,6 +227,13 @@ private struct SavedMethodCard: View {
                 "\(config.pouchesPerCan) per can • \(price)"
             ]
         }
+    }
+
+    private func decimalString(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSDecimalNumber(decimal: value)) ?? "\(value)"
     }
 }
 

@@ -115,7 +115,7 @@
 "onboarding_welcome_title" = "Добро пожаловать в %@";
 "onboarding_welcome_subtitle" = "Отслеживай никотин, расходы и прогресс в одном месте.";
 "onboarding_primary_cta" = "Поехали";
-"onboarding_primary_cta_hint" = "Откроет выбор способа";
+"onboarding_primary_cta_hint" = "Откроет выбор темы";
 "onboarding_mode_coming_soon" = "Скоро";
 "onboarding_mode_picker_title" = "Выберите режим";
 "onboarding_mode_picker_subtitle" = "Свайпайте влево или вправо, чтобы выбрать комфортный сценарий.";
@@ -144,8 +144,12 @@
 "onboarding_continue" = "Продолжить";
 "onboarding_welcome_hint" = "Можно пропустить сейчас и закончить настройку позже в настройках.";
 "onboarding_step_one" = "Шаг 1";
+"onboarding_step_two" = "Шаг 2";
 "onboarding_method_card_hint_copy" = "Определи, что хочешь отслеживать в первую очередь.";
 "onboarding_currency_search_placeholder" = "Поиск валюты";
+"onboarding_theme_title" = "Выберите тему";
+"onboarding_theme_subtitle" = "Выбери оформление, которое хочется видеть каждый день.";
+"onboarding_theme_cta" = "Далее";
 "back_button" = "Назад";
 
 "cigarettes_per_day_title" = "Сколько сигарет в день?";
@@ -157,6 +161,15 @@
 "pack_price_title" = "Цена пачки";
 "pack_price_placeholder" = "Напр.: 7.50";
 "pack_price_tip" = "Возьми привычную цену, чтобы посчитать стоимость сигареты.";
+"hookah_sessions_per_week_title" = "Сессий в неделю";
+"hookah_sessions_per_week_subtitle" = "Среднее количество кальянных сессий за неделю.";
+"hookah_sessions_per_week_range" = "Рекомендуемо: 1-21.";
+"hookah_packs_per_session_title" = "Пачек на сессию";
+"hookah_packs_per_session_subtitle" = "Сколько пачек табака обычно уходит за одну сессию.";
+"hookah_packs_per_session_range" = "Варианты: 0,25; 0,5; 0,75; 1; 2; 3; 4; 5.";
+"hookah_pack_price_title" = "Цена пачки";
+"hookah_pack_price_placeholder" = "Напр.: 15.00";
+"hookah_pack_price_tip" = "Возьми цену табака, чтобы посчитать стоимость сессии.";
 
 "puffs_per_device_title" = "Затяжек в устройстве";
 "puffs_per_device_subtitle" = "Посмотри цифру на коробке.";
@@ -210,6 +223,8 @@
 "validation_cigarettes_per_day" = "Сигарет в день должно быть от 1 до 99.";
 "validation_cigarettes_per_pack" = "В пачке может быть только 10-40 сигарет.";
 "validation_pack_price_positive" = "Цена пачки должна быть больше нуля.";
+"validation_hookah_sessions_per_week" = "Сессий в неделю должно быть от 1 до 21.";
+"validation_hookah_packs_per_session" = "Пачек на сессию должно быть из списка.";
 "warning_cigarettes_high_consumption" = "Количество в день больше двух пачек. Убедись, что всё верно.";
 "validation_puffs_range" = "Укажи 600-10000 затяжек в устройстве.";
 "validation_device_price_positive" = "Цена устройства должна быть больше нуля.";

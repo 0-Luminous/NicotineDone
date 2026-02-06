@@ -5,7 +5,7 @@ struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
     @State private var path: [OnboardingRoute] = []
 
-    private let appName = "SmokeTracker"
+    private let appName = "NicotineDone"
 
     var body: some View {
         NavigationStack(path: $path) {

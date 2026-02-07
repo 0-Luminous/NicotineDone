@@ -8,6 +8,7 @@ struct SettingsAppearancePickerSheet: View {
     @Binding var backgroundIndexLight: Int
     @Binding var backgroundIndexDark: Int
     @Binding var appPreferredColorSchemeRaw: Int
+    @State private var selectedAchievement: AchievementItem?
 
     var body: some View {
         NavigationStack {
@@ -30,13 +31,16 @@ struct SettingsAppearancePickerSheet: View {
 
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 3),
                               spacing: 16) {
-                        ForEach(DashboardBackgroundStyle.appearanceOptions) { style in
+                        ForEach(sortedAppearanceOptions) { style in
                             let isSelected = self.isSelected(style)
                             let isLocked = !allowedStyles.contains(style)
                             Button {
-                                guard !isLocked else { return }
-                                backgroundIndexLight = style.rawValue
-                                backgroundIndexDark = style.rawValue
+                                if isLocked {
+                                    selectedAchievement = AchievementItem.catalog.first { $0.rewardTheme == style }
+                                } else {
+                                    backgroundIndexLight = style.rawValue
+                                    backgroundIndexDark = style.rawValue
+                                }
                             } label: {
                                 VStack(spacing: 10) {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -67,12 +71,6 @@ struct SettingsAppearancePickerSheet: View {
                                         .font(.footnote.weight(isSelected ? .semibold : .regular))
                                         .foregroundStyle(isSelected ? .primary : .secondary)
                                         .lineLimit(1)
-                                    if isLocked {
-                                        Text("Unlock via achievements")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(12)
@@ -83,7 +81,6 @@ struct SettingsAppearancePickerSheet: View {
                                 )
                             }
                             .buttonStyle(.plain)
-                            .disabled(isLocked)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -110,6 +107,12 @@ struct SettingsAppearancePickerSheet: View {
         .onChange(of: appearancePickerMode) { newValue in
             appPreferredColorSchemeRaw = Self.rawValue(from: newValue)
         }
+        .sheet(item: $selectedAchievement) { achievement in
+            AchievementPreviewSheet(item: achievement,
+                                    primaryTextColor: currentBackgroundStyle.primaryTextColor(for: colorScheme),
+                                    backgroundStyle: currentBackgroundStyle)
+                .presentationBackground(.clear)
+        }
     }
 
     private var appearancePickerDescription: String {
@@ -132,6 +135,13 @@ struct SettingsAppearancePickerSheet: View {
 
     private var allowedStyles: Set<DashboardBackgroundStyle> {
         [.classic, .oceanDeep, .sunrise, .virentia]
+    }
+
+    private var sortedAppearanceOptions: [DashboardBackgroundStyle] {
+        let options = DashboardBackgroundStyle.appearanceOptions
+        let available = options.filter { allowedStyles.contains($0) }
+        let locked = options.filter { !allowedStyles.contains($0) }
+        return available + locked
     }
 
     private static func preferredColorScheme(from raw: Int) -> ColorScheme? {

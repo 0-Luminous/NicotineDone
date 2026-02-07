@@ -11,7 +11,76 @@ struct AchievementsScreen: View {
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
     @State private var selectedAchievement: AchievementItem?
 
-    private let achievements: [AchievementItem] = [
+    private let achievements: [AchievementItem] = AchievementItem.catalog
+
+    var body: some View {
+        ZStack {
+            backgroundStyle.backgroundGradient(for: colorScheme)
+                .ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+
+                    ForEach(achievements) { achievement in
+                        AchievementCard(item: achievement,
+                                        primaryTextColor: primaryTextColor,
+                                        onTap: { selectedAchievement = achievement })
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 40)
+            }
+        }
+        .navigationTitle("Achievements")
+        .navigationBarTitleDisplayMode(.large)
+        .onAppear(perform: ensureAppearanceMigration)
+        .sheet(item: $selectedAchievement) { achievement in
+            AchievementPreviewSheet(item: achievement,
+                                    primaryTextColor: primaryTextColor,
+                                    backgroundStyle: backgroundStyle)
+                .presentationBackground(.clear)
+        }
+    }
+}
+
+private extension AchievementsScreen {
+    var backgroundStyle: DashboardBackgroundStyle {
+        let index = colorScheme == .dark ? backgroundIndexDark : backgroundIndexLight
+        return DashboardBackgroundStyle(rawValue: index) ?? DashboardBackgroundStyle.default(for: colorScheme)
+    }
+
+    var primaryTextColor: Color {
+        backgroundStyle.primaryTextColor(for: colorScheme)
+    }
+
+    var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("View your progress and unlocked badges.")
+                .font(.callout)
+                .foregroundStyle(primaryTextColor.opacity(0.75))
+        }
+        .padding(.bottom, 8)
+    }
+
+    func ensureAppearanceMigration() {
+        guard !appearanceStylesMigrated else { return }
+        backgroundIndexLight = legacyBackgroundIndex
+        backgroundIndexDark = legacyBackgroundIndex
+        appearanceStylesMigrated = true
+    }
+}
+
+struct AchievementItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let cardDescription: String
+    let healthBenefit: String
+    let medal: MedalStyle
+    let rewardTheme: DashboardBackgroundStyle?
+    static let catalog: [AchievementItem] = [
         AchievementItem(title: "Чистые утренние часы",
                         subtitle: "Без курения до 12:00",
                         cardDescription: "Свободное утро и лёгкий старт дня.",
@@ -145,74 +214,6 @@ struct AchievementsScreen: View {
                         healthBenefit: "Формируется новая привычка без никотина.",
                         medal: .aurora)
     ]
-
-    var body: some View {
-        ZStack {
-            backgroundStyle.backgroundGradient(for: colorScheme)
-                .ignoresSafeArea()
-
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    header
-
-                    ForEach(achievements) { achievement in
-                        AchievementCard(item: achievement,
-                                        primaryTextColor: primaryTextColor,
-                                        onTap: { selectedAchievement = achievement })
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 40)
-            }
-        }
-        .navigationTitle("Achievements")
-        .navigationBarTitleDisplayMode(.large)
-        .onAppear(perform: ensureAppearanceMigration)
-        .sheet(item: $selectedAchievement) { achievement in
-            AchievementPreviewSheet(item: achievement,
-                                    primaryTextColor: primaryTextColor,
-                                    backgroundStyle: backgroundStyle)
-                .presentationBackground(.clear)
-        }
-    }
-}
-
-private extension AchievementsScreen {
-    var backgroundStyle: DashboardBackgroundStyle {
-        let index = colorScheme == .dark ? backgroundIndexDark : backgroundIndexLight
-        return DashboardBackgroundStyle(rawValue: index) ?? DashboardBackgroundStyle.default(for: colorScheme)
-    }
-
-    var primaryTextColor: Color {
-        backgroundStyle.primaryTextColor(for: colorScheme)
-    }
-
-    var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("View your progress and unlocked badges.")
-                .font(.callout)
-                .foregroundStyle(primaryTextColor.opacity(0.75))
-        }
-        .padding(.bottom, 8)
-    }
-
-    func ensureAppearanceMigration() {
-        guard !appearanceStylesMigrated else { return }
-        backgroundIndexLight = legacyBackgroundIndex
-        backgroundIndexDark = legacyBackgroundIndex
-        appearanceStylesMigrated = true
-    }
-}
-
-struct AchievementItem: Identifiable {
-    let id = UUID()
-    let title: String
-    let subtitle: String
-    let cardDescription: String
-    let healthBenefit: String
-    let medal: MedalStyle
-    let rewardTheme: DashboardBackgroundStyle?
 
     init(title: String,
          subtitle: String,

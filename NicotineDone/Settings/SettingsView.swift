@@ -16,7 +16,6 @@ struct SettingsView: View {
     @State private var latestProfile: NicotineProfile?
     @State private var dailyLimit: Double = 10
     @State private var showMethodPicker = false
-    @State private var showAppearancePicker = false
     @State private var appearancePickerMode: ColorScheme? = nil
     @State private var storedProfiles: [NicotineProfile] = []
     @AppStorage("appPreferredColorScheme") private var appPreferredColorSchemeRaw: Int = 0
@@ -98,15 +97,6 @@ struct SettingsView: View {
                 onDelete: { profile in
                     deleteProfile(profile)
                 }
-            )
-        }
-        .sheet(isPresented: $showAppearancePicker) {
-            SettingsAppearancePickerSheet(
-                appearancePickerMode: $appearancePickerMode,
-                showAppearancePicker: $showAppearancePicker,
-                backgroundIndexLight: $backgroundIndexLight,
-                backgroundIndexDark: $backgroundIndexDark,
-                appPreferredColorSchemeRaw: $appPreferredColorSchemeRaw
             )
         }
     }
@@ -237,8 +227,13 @@ private extension SettingsView {
     }
 
     var appearanceButton: some View {
-        Button {
-            showAppearancePicker = true
+        NavigationLink {
+            SettingsAppearancePickerSheet(
+                appearancePickerMode: $appearancePickerMode,
+                backgroundIndexLight: $backgroundIndexLight,
+                backgroundIndexDark: $backgroundIndexDark,
+                appPreferredColorSchemeRaw: $appPreferredColorSchemeRaw
+            )
         } label: {
             HStack(spacing: 16) {
                 ZStack {

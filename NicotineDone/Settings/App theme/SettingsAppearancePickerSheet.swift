@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct SettingsAppearancePickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
     @Binding var appearancePickerMode: ColorScheme?
-    @Binding var showAppearancePicker: Bool
     @Binding var backgroundIndexLight: Int
     @Binding var backgroundIndexDark: Int
     @Binding var appPreferredColorSchemeRaw: Int
@@ -89,17 +89,7 @@ struct SettingsAppearancePickerSheet: View {
             }
             .background(currentBackgroundStyle.backgroundGradient(for: colorScheme).ignoresSafeArea())
             .navigationTitle("Choose Theme")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { showAppearancePicker = false }
-                }
-                // ToolbarItem(placement: .principal) {
-                //     Text("Choose Appearance")
-                //         .font(.headline)
-                // }
-            }
         }
-        .presentationDetents([.large])
         .preferredColorSchemeIfNeeded(appearancePickerMode)
         .onAppear {
             appearancePickerMode = Self.preferredColorScheme(from: appPreferredColorSchemeRaw)

@@ -11,9 +11,18 @@ struct SettingsMethodSelectionView: View {
     let onAdd: () -> Void
     let onEdit: (NicotineProfile) -> Void
     let onDelete: (NicotineProfile) -> Void
+    @State private var selection: Set<NicotineMethod> = []
 
     private var primaryTextColor: Color {
         backgroundStyle.primaryTextColor(for: colorScheme)
+    }
+
+    private var selectionCount: Int {
+        selection.count
+    }
+
+    private var selectedProfiles: [NicotineProfile] {
+        profiles.filter { selection.contains($0.method) }
     }
 
     var body: some View {
@@ -31,10 +40,11 @@ struct SettingsMethodSelectionView: View {
                         VStack(spacing: 14) {
                             ForEach(profiles, id: \.method) { profile in
                                 Button {
-                                    handleSelection(profile)
+                                    toggleSelection(profile)
                                 } label: {
                                     SavedMethodCard(profile: profile,
                                                     isActive: profile.method == selectedMethod,
+                                                    isSelected: selection.contains(profile.method),
                                                     backgroundStyle: backgroundStyle)
                                 }
                                 .buttonStyle(.plain)
@@ -64,13 +74,49 @@ struct SettingsMethodSelectionView: View {
                     Button("Close") { dismiss() }
                 }
             }
+            .onChange(of: profiles) { newProfiles in
+                let available = Set(newProfiles.map(\.method))
+                selection = selection.intersection(available)
+            }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 12) {
-                    Button(action: handleAdd) {
-                        Label("Add method", systemImage: "plus")
-                            .frame(maxWidth: .infinity)
+                    HStack(spacing: 12) {
+                        if selectionCount == 0 {
+                            Button(action: handleAdd) {
+                                Label("Add method", systemImage: "plus")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryGradientButtonStyle())
+                        }
+
+                        if selectionCount == 1 {
+                            Button(action: handleConfirmSelection) {
+                                Label("Select", systemImage: "checkmark")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryGradientButtonStyle())
+                            .disabled(selectionCount != 1)
+                            .opacity(selectionCount == 1 ? 1 : 0.5)
+                        }
                     }
-                    .buttonStyle(PrimaryGradientButtonStyle())
+
+                    if selectionCount > 0 {
+                        HStack(spacing: 12) {
+                            if selectionCount == 1 {
+                                Button(action: handleEditSelection) {
+                                    Label("Edit", systemImage: "pencil")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(PrimaryGradientButtonStyle())
+                            }
+
+                            Button(role: .destructive, action: handleDeleteSelection) {
+                                Label("Delete", systemImage: "trash")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryGradientButtonStyle())
+                        }
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
@@ -93,9 +139,12 @@ struct SettingsMethodSelectionView: View {
         }
     }
 
-    private func handleSelection(_ profile: NicotineProfile) {
-        onSelect(profile)
-        dismiss()
+    private func toggleSelection(_ profile: NicotineProfile) {
+        if selection.contains(profile.method) {
+            selection.remove(profile.method)
+        } else {
+            selection.insert(profile.method)
+        }
     }
 
     private func handleAdd() {
@@ -112,6 +161,23 @@ struct SettingsMethodSelectionView: View {
         }
     }
 
+    private func handleConfirmSelection() {
+        guard selectionCount == 1, let profile = selectedProfiles.first else { return }
+        onSelect(profile)
+        dismiss()
+    }
+
+    private func handleEditSelection() {
+        guard selectionCount == 1, let profile = selectedProfiles.first else { return }
+        handleEdit(profile)
+    }
+
+    private func handleDeleteSelection() {
+        let profilesToDelete = selectedProfiles
+        profilesToDelete.forEach { onDelete($0) }
+        selection.subtract(profilesToDelete.map(\.method))
+    }
+
     private func handleDelete(_ profile: NicotineProfile) {
         onDelete(profile)
     }
@@ -120,21 +186,56 @@ struct SettingsMethodSelectionView: View {
 private struct SavedMethodCard: View {
     let profile: NicotineProfile
     let isActive: Bool
+    let isSelected: Bool
     let backgroundStyle: DashboardBackgroundStyle
     @Environment(\.colorScheme) private var colorScheme
+
+    private let iconShape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+    private let cardShape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
     private var primaryTextColor: Color {
         backgroundStyle.primaryTextColor(for: colorScheme)
     }
 
+    private var isLightBackground: Bool {
+        switch backgroundStyle {
+        case .sunrise, .melloYellow:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var iconStrokeColor: Color {
+        isLightBackground ? Color.black.opacity(0.05) : Color.white.opacity(0.2)
+    }
+    
+    private var selectedBorderColor: Color {
+        primaryTextColor.opacity(isLightBackground ? 0.35 : 0.45)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
-                Image(profile.method.iconAssetName)
-                    .resizable()
-                    .scaledToFit()
+                iconShape
+                    .fill(backgroundStyle.circleGradient)
                     .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        Image(profile.method.iconAssetName)
+                            .resizable()
+                            .renderingMode(.original)
+                            .scaledToFit()
+                            .frame(width: 52, height: 52)
+                            .clipShape(iconShape)
+                    )
+                    .overlay(
+                        iconShape
+                            .stroke(iconStrokeColor, lineWidth: 1)
+                    )
+                    .overlay(
+                        iconShape
+                            .stroke(isActive ? selectedBorderColor : .clear, lineWidth: 1)
+                    )
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
@@ -171,6 +272,18 @@ private struct SavedMethodCard: View {
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(.clear, in: .rect(cornerRadius: 24))
+        .overlay(
+            cardShape
+                .stroke((isActive || isSelected) ? selectedBorderColor : .clear, lineWidth: 1)
+        )
+        .overlay(alignment: .topTrailing) {
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(primaryTextColor)
+                    .padding(12)
+            }
+        }
         .shadow(color: .black.opacity(0.35), radius: 18, x: 0, y: 10)
     }
 

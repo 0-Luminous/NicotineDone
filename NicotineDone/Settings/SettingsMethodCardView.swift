@@ -37,6 +37,10 @@ struct SettingsMethodCardView: View {
     private var badgeFillColor: Color {
         isLightBackground ? Color.black.opacity(0.08) : Color.white.opacity(0.18)
     }
+    
+    private var selectedBorderColor: Color {
+        primaryTextColor.opacity(isLightBackground ? 0.35 : 0.45)
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 0) {
@@ -72,6 +76,10 @@ struct SettingsMethodCardView: View {
         .overlay(alignment: .trailing) {
             arrowIndicator
         }
+        .overlay(
+            cardShape
+                .stroke(selectedBorderColor, lineWidth: 1)
+        )
         // .shadow(color: cardShadowColor, radius: 22, x: 0, y: 14)
         .accessibilityElement(children: .combine)
         .glassEffect(
@@ -95,6 +103,10 @@ struct SettingsMethodCardView: View {
             .overlay(
                 iconShape
                     .stroke(iconStrokeColor, lineWidth: 1)
+            )
+            .overlay(
+                iconShape
+                    .stroke(selectedBorderColor, lineWidth: 1)
             )
             // .shadow(color: cardShadowColor.opacity(isLightBackground ? 0.7 : 0.5), radius: 16, y: 10)
     }

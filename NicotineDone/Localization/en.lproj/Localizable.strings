@@ -62,6 +62,7 @@
 "stats_chart_range_month" = "Month";
 "stats_chart_range_year" = "Year";
 "stats_chart_axis_day" = "Day";
+"stats_chart_axis_hour" = "Hour";
 "stats_chart_axis_count" = "Count";
 "stats_chart_more_data_needed" = "More data is needed to show stats.";
 "stats_financial_title" = "Financial overview";

@@ -9,6 +9,7 @@ struct SettingsAppearancePickerSheet: View {
     @Binding var backgroundIndexDark: Int
     @Binding var appPreferredColorSchemeRaw: Int
     @State private var selectedAchievement: AchievementItem?
+    @AppStorage("unlockedThemesVersion") private var unlockedThemesVersion = 0
 
     var body: some View {
         NavigationStack {
@@ -124,7 +125,8 @@ struct SettingsAppearancePickerSheet: View {
     }
 
     private var allowedStyles: Set<DashboardBackgroundStyle> {
-        [.classic, .oceanDeep, .sunrise, .virentia]
+        _ = unlockedThemesVersion
+        return ThemeUnlockStore.unlockedStyles()
     }
 
     private var sortedAppearanceOptions: [DashboardBackgroundStyle] {

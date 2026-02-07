@@ -15,7 +15,6 @@ struct CalendarScreen: View {
     @State private var isYearPickerPresented = false
     @State private var pendingYearSelection: Int = Calendar.current.component(.year, from: Date())
 
-    private var entryType: EntryType { user.product.entryType }
     private var limit: Int { Int(user.dailyLimit) }
     private var backgroundStyle: DashboardBackgroundStyle {
         style(for: colorScheme)
@@ -122,7 +121,7 @@ struct CalendarScreen: View {
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.9), value: monthAnchor)
         .sheet(item: $selectedDay) { selection in
-            DailyDetailSheet(user: user, date: selection.date, entryType: entryType)
+            DailyDetailSheet(user: user, date: selection.date)
                 .presentationBackground(.ultraThinMaterial)
                 .presentationCornerRadius(36)
         }
@@ -222,7 +221,7 @@ struct CalendarScreen: View {
 
     private func count(for date: Date) -> Int {
         let service = StatsService(context: context)
-        return service.countForDay(user: user, date: date, type: entryType)
+        return service.countForDayAllTypes(user: user, date: date)
     }
 
     private var yearTitle: String {
@@ -244,8 +243,8 @@ struct CalendarScreen: View {
         }
 
         let request: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        request.predicate = NSPredicate(format: "user == %@ AND type == %d AND date >= %@ AND date < %@",
-                                        user, entryType.rawValue, startOfYear as NSDate, endOfYear as NSDate)
+        request.predicate = NSPredicate(format: "user == %@ AND date >= %@ AND date < %@",
+                                        user, startOfYear as NSDate, endOfYear as NSDate)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \DailyStat.date, ascending: true)]
 
         let stats = (try? context.fetch(request)) ?? []
@@ -265,7 +264,7 @@ struct CalendarScreen: View {
 
     private func yearsWithData() -> [Int] {
         let request: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        request.predicate = NSPredicate(format: "user == %@ AND type == %d", user, entryType.rawValue)
+        request.predicate = NSPredicate(format: "user == %@", user)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \DailyStat.date, ascending: true)]
 
         let stats = (try? context.fetch(request)) ?? []
@@ -568,9 +567,6 @@ private struct DailyDetailSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var user: User
     let date: Date
-    let entryType: EntryType
-    private let methodLabel: String?
-    private let methodIconName: String?
 
     @FetchRequest private var entries: FetchedResults<Entry>
     @AppStorage("dashboardBackgroundIndex") private var legacyBackgroundIndex: Int = DashboardBackgroundStyle.default.rawValue
@@ -578,20 +574,17 @@ private struct DailyDetailSheet: View {
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
 
-    init(user: User, date: Date, entryType: EntryType) {
+    init(user: User, date: Date) {
         self.user = user
         self.date = date
-        self.entryType = entryType
-        self.methodLabel = DailyDetailSheet.resolveMethodLabel()
-        self.methodIconName = DailyDetailSheet.resolveMethodIconName()
 
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: date) as NSDate
         let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date))! as NSDate
 
         let request: NSFetchRequest<Entry> = Entry.fetchRequest()
-        request.predicate = NSPredicate(format: "user == %@ AND createdAt >= %@ AND createdAt < %@ AND type == %d",
-                                        user, start, end, entryType.rawValue)
+        request.predicate = NSPredicate(format: "user == %@ AND createdAt >= %@ AND createdAt < %@",
+                                        user, start, end)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Entry.createdAt, ascending: true)]
         _entries = FetchRequest(fetchRequest: request, animation: .default)
     }
@@ -629,7 +622,7 @@ private struct DailyDetailSheet: View {
                             .foregroundStyle(primaryTextColor)) {
                             ForEach(entries) { entry in
                                 HStack(alignment: .center, spacing: 12) {
-                                    if let iconName = methodIconName {
+                                    if let iconName = methodIconName(for: entry) {
                                         Image(iconName)
                                             .resizable()
                                             .scaledToFit()
@@ -677,10 +670,6 @@ private struct DailyDetailSheet: View {
     }
 
     private func consumptionDescription(for entry: Entry) -> String {
-        if let methodLabel {
-            return methodLabel
-        }
-
         guard let type = EntryType(rawValue: entry.type) else {
             return user.product.title
         }
@@ -693,15 +682,14 @@ private struct DailyDetailSheet: View {
         }
     }
 
-    private static func resolveMethodLabel() -> String? {
-        let store = InMemorySettingsStore()
-        guard let method = store.loadProfile()?.method else { return nil }
-        return NSLocalizedString(method.localizationKey, comment: "nicotine method label")
-    }
-
-    private static func resolveMethodIconName() -> String? {
-        let store = InMemorySettingsStore()
-        return store.loadProfile()?.method.iconAssetName
+    private func methodIconName(for entry: Entry) -> String? {
+        guard let type = EntryType(rawValue: entry.type) else { return nil }
+        switch type {
+        case .cig:
+            return NicotineMethod.cigarettes.iconAssetName
+        case .puff:
+            return NicotineMethod.refillableVape.iconAssetName
+        }
     }
 
     private var backgroundStyle: DashboardBackgroundStyle {

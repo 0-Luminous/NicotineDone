@@ -84,6 +84,7 @@ struct AchievementPreviewSheet: View {
         .glassEffect(.clear, in: .rect(cornerRadius: 18))
         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 6)
     }
+
 }
 
 private struct ThemeRewardBadge: View {

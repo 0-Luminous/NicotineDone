@@ -82,18 +82,30 @@ struct StatsScreen: View {
                     .frame(maxWidth: .infinity, minHeight: 200, alignment: .center)
                     .foregroundStyle(.secondary)
             } else {
+                let showsLine = currentTrendData.count > 1
+                let axisKey = selectedTrendRange == .today ? "stats_chart_axis_hour" : "stats_chart_axis_day"
+                let axisUnit: Calendar.Component = selectedTrendRange == .today ? .hour : .day
                 Chart(currentTrendData) { point in
-                    LineMark(
-                        x: .value(localized("stats_chart_axis_day"), point.date, unit: .day),
-                        y: .value(localized("stats_chart_axis_count"), point.count)
-                    )
-                    .foregroundStyle(Color.accentColor)
+                    if showsLine {
+                        LineMark(
+                            x: .value(localized(axisKey), point.date, unit: axisUnit),
+                            y: .value(localized("stats_chart_axis_count"), point.count)
+                        )
+                        .foregroundStyle(Color.accentColor)
 
-                    AreaMark(
-                        x: .value(localized("stats_chart_axis_day"), point.date, unit: .day),
+                        AreaMark(
+                            x: .value(localized(axisKey), point.date, unit: axisUnit),
+                            y: .value(localized("stats_chart_axis_count"), point.count)
+                        )
+                        .foregroundStyle(LinearGradient(colors: [.accentColor.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom))
+                    }
+
+                    PointMark(
+                        x: .value(localized(axisKey), point.date, unit: axisUnit),
                         y: .value(localized("stats_chart_axis_count"), point.count)
                     )
-                    .foregroundStyle(LinearGradient(colors: [.accentColor.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom))
+                    .symbolSize(showsLine ? 30 : 70)
+                    .foregroundStyle(Color.accentColor)
                 }
                 .frame(height: 200)
                 .chartYAxis {
@@ -169,12 +181,13 @@ struct StatsScreen: View {
         let entryType = user.product.entryType
         let anchor = Date()
         let todayCount = stats.countForDay(user: user, date: anchor, type: entryType)
+        let todayHourlyTotals = stats.totalsForHoursInDay(user: user, date: anchor, type: entryType)
         let weekTotals = stats.totalsForLastDays(user: user, days: 7, type: entryType)
         let monthTotals = stats.totalsForLastDays(user: user, days: 30, type: entryType)
         let yearTotals = stats.totalsForLastDays(user: user, days: 365, type: entryType)
 
         var nextTrendData: [TrendRange: [DailyPoint]] = [
-            .today: [DailyPoint(date: Calendar.current.startOfDay(for: anchor), count: todayCount)]
+            .today: pointsForHoursInDay(totals: todayHourlyTotals, anchor: anchor, fallbackCount: todayCount)
         ]
         var nextAvailableRanges: [TrendRange] = [.today]
 
@@ -230,6 +243,31 @@ struct StatsScreen: View {
             let day = calendar.startOfDay(for: date)
             return DailyPoint(date: day, count: normalizedTotals[day, default: 0])
         }
+    }
+
+    private func pointsForHoursInDay(totals: [Date: Int], anchor: Date, fallbackCount: Int) -> [DailyPoint] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: anchor)
+
+        var normalizedTotals: [Date: Int] = [:]
+        for (date, count) in totals {
+            let hour = calendar.component(.hour, from: date)
+            guard let hourDate = calendar.date(byAdding: .hour, value: hour, to: start) else { continue }
+            normalizedTotals[hourDate] = count
+        }
+
+        var points: [DailyPoint] = []
+        points.reserveCapacity(24)
+        for hour in 0..<24 {
+            guard let date = calendar.date(byAdding: .hour, value: hour, to: start) else { continue }
+            points.append(DailyPoint(date: date, count: normalizedTotals[date, default: 0]))
+        }
+
+        if points.allSatisfy({ $0.count == 0 }) && fallbackCount > 0 {
+            return [DailyPoint(date: start, count: fallbackCount)]
+        }
+
+        return points
     }
 
     private func formatCurrency(_ amount: Double) -> String {

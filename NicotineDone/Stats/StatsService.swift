@@ -48,6 +48,14 @@ final class StatsService {
         return Int((try? context.fetch(req).first?.count) ?? 0)
     }
 
+    func countForDayAllTypes(user: User, date: Date) -> Int {
+        let sod = startOfDay(for: date)
+        let req: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
+        req.predicate = NSPredicate(format: "user == %@ AND date == %@", user, sod as NSDate)
+        let stats = (try? context.fetch(req)) ?? []
+        return stats.reduce(0) { $0 + Int($1.count) }
+    }
+
     func totalsForLastDays(user: User, days: Int, type: EntryType) -> [Date: Int] {
         guard days > 0 else { return [:] }
         let end = startOfDay(for: Date())
@@ -60,6 +68,25 @@ final class StatsService {
         let stats = (try? context.fetch(req)) ?? []
         var map: [Date: Int] = [:]
         stats.forEach { map[$0.date ?? Date()] = Int($0.count) }
+        return map
+    }
+
+    func totalsForHoursInDay(user: User, date: Date, type: EntryType) -> [Date: Int] {
+        let start = startOfDay(for: date)
+        let end = endOfDay(for: date)
+
+        let request: NSFetchRequest<Entry> = Entry.fetchRequest()
+        request.predicate = NSPredicate(format: "user == %@ AND type == %d AND createdAt >= %@ AND createdAt < %@",
+                                        user, type.rawValue, start as NSDate, end as NSDate)
+
+        let entries = (try? context.fetch(request)) ?? []
+        var map: [Date: Int] = [:]
+        for entry in entries {
+            guard let createdAt = entry.createdAt else { continue }
+            let hour = calendar.component(.hour, from: createdAt)
+            guard let hourDate = calendar.date(byAdding: .hour, value: hour, to: start) else { continue }
+            map[hourDate, default: 0] += 1
+        }
         return map
     }
 

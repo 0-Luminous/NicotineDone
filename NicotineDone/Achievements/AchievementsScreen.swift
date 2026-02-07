@@ -9,32 +9,141 @@ struct AchievementsScreen: View {
     @AppStorage("dashboardBackgroundIndexLight") private var backgroundIndexLight: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
+    @State private var selectedAchievement: AchievementItem?
 
     private let achievements: [AchievementItem] = [
-        AchievementItem(title: "Чистые утренние часы", subtitle: "Без курения до 12:00", medal: .sunrise),
-        AchievementItem(title: "Чистые вечера", subtitle: "Без курения после 20:00", medal: .evening),
-        AchievementItem(title: "Первый чистый день", subtitle: "24 часа без никотина", medal: .dayOne),
-        AchievementItem(title: "В лимите", subtitle: "Дни без превышения лимита", medal: .limit),
-        AchievementItem(title: "Я всё ещё здесь", subtitle: "7 дней подряд с приложением", medal: .streak),
-        AchievementItem(title: "Лёгкие утра", subtitle: "3 утра без никотина", medal: .morning),
-        AchievementItem(title: "6 часов контроля", subtitle: "Первый устойчивый промежуток", medal: .bronze, rewardTheme: .coralSunset),
-        AchievementItem(title: "9 часов без никотина", subtitle: "Тяга уже не рулит", medal: .bronze, rewardTheme: .melloYellow),
-        AchievementItem(title: "12 часов осознанности", subtitle: "Половина суток без привычки", medal: .silver, rewardTheme: .ocean),
-        AchievementItem(title: "15 часов выбора", subtitle: "Ты продолжаешь", medal: .silver, rewardTheme: .forest),
-        AchievementItem(title: "18 часов устойчивости", subtitle: "Тело адаптируется", medal: .silver, rewardTheme: .cosmicPurple),
-        AchievementItem(title: "24 часа свободы", subtitle: "Первые сутки без никотина", medal: .gold, rewardTheme: .pinkNebula),
-        AchievementItem(title: "30 часов уверенности", subtitle: "Ты прошёл сложный этап", medal: .gold, rewardTheme: .auroraGlow),
-        AchievementItem(title: "36 часов восстановления", subtitle: "Организм перестраивается", medal: .gold, rewardTheme: .lavaBurst),
-        AchievementItem(title: "42 часа фокуса", subtitle: "Привычка ослабевает", medal: .platinum, rewardTheme: .iceCrystal),
-        AchievementItem(title: "48 часов без никотина", subtitle: "Серьёзный шаг вперёд", medal: .platinum, rewardTheme: .frescoCrush),
-        AchievementItem(title: "60 часов контроля", subtitle: "Почти 2,5 дня", medal: .platinum, rewardTheme: .сyberSplash),
-        AchievementItem(title: "72 часа свободы", subtitle: "Три дня подряд", medal: .diamond, rewardTheme: .oceanDeep),
-        AchievementItem(title: "84 часа устойчивости", subtitle: "Тяга заметно слабее", medal: .diamond),
-        AchievementItem(title: "96 часов ясности", subtitle: "Четыре дня выбора", medal: .diamond),
-        AchievementItem(title: "108 часов спокойствия", subtitle: "Новая норма формируется", medal: .aurora),
-        AchievementItem(title: "180 часов осознанности", subtitle: "Больше недели", medal: .aurora),
-        AchievementItem(title: "192 часа устойчивости", subtitle: "8 дней подряд", medal: .aurora),
-        AchievementItem(title: "200 часов свободы", subtitle: "Ты реально изменил паттерн", medal: .aurora)
+        AchievementItem(title: "Чистые утренние часы",
+                        subtitle: "Без курения до 12:00",
+                        cardDescription: "Свободное утро и лёгкий старт дня.",
+                        healthBenefit: "Утренний пульс и давление стабильнее, легче дышать.",
+                        medal: .sunrise),
+        AchievementItem(title: "Чистые вечера",
+                        subtitle: "Без курения после 20:00",
+                        cardDescription: "Вечер спокойнее и без лишних триггеров.",
+                        healthBenefit: "Сон глубже, меньше ночных пробуждений.",
+                        medal: .evening),
+        AchievementItem(title: "Первый чистый день",
+                        subtitle: "24 часа без никотина",
+                        cardDescription: "Первый день — важная точка опоры.",
+                        healthBenefit: "Снижается уровень CO, кровь насыщается кислородом.",
+                        medal: .dayOne),
+        AchievementItem(title: "В лимите",
+                        subtitle: "Неделя без превышения лимита",
+                        cardDescription: "Дисциплина и контроль изо дня в день.",
+                        healthBenefit: "Меньше нагрузка на сердце и дыхательную систему.",
+                        medal: .limit),
+        AchievementItem(title: "Я всё ещё здесь",
+                        subtitle: "7 дней подряд с приложением",
+                        cardDescription: "Неделя стабильного ритма и внимания к себе.",
+                        healthBenefit: "Устойчивый ритм помогает мозгу снижать тягу.",
+                        medal: .streak),
+        AchievementItem(title: "Лёгкие утра",
+                        subtitle: "3 утра без никотина до 12:00",
+                        cardDescription: "Три спокойных утра — сильный старт.",
+                        healthBenefit: "Лёгкие очищаются активнее, дыхание ровнее.",
+                        medal: .morning),
+        AchievementItem(title: "6 часов контроля",
+                        subtitle: "6 часов без никотина",
+                        cardDescription: "Первый устойчивый отрезок в твою пользу.",
+                        healthBenefit: "Снижается частота позывов, появляется контроль.",
+                        medal: .bronze,
+                        rewardTheme: .coralSunset),
+        AchievementItem(title: "9 часов без никотина",
+                        subtitle: "9 часов без никотина",
+                        cardDescription: "Тяга слабеет, ты держишь темп.",
+                        healthBenefit: "Организм начинает стабилизировать уровень кислорода.",
+                        medal: .bronze,
+                        rewardTheme: .melloYellow),
+        AchievementItem(title: "12 часов осознанности",
+                        subtitle: "12 часов без никотина",
+                        cardDescription: "Половина суток под твоим контролем.",
+                        healthBenefit: "Пульс и давление ближе к норме.",
+                        medal: .silver,
+                        rewardTheme: .ocean),
+        AchievementItem(title: "15 часов выбора",
+                        subtitle: "15 часов без никотина",
+                        cardDescription: "Ты сохраняешь фокус и продолжаешь.",
+                        healthBenefit: "Снижается раздражительность, внимание яснее.",
+                        medal: .silver,
+                        rewardTheme: .forest),
+        AchievementItem(title: "18 часов устойчивости",
+                        subtitle: "18 часов без никотина",
+                        cardDescription: "Организм адаптируется, устойчивость растёт.",
+                        healthBenefit: "Улучшается циркуляция крови.",
+                        medal: .silver,
+                        rewardTheme: .cosmicPurple),
+        AchievementItem(title: "24 часа свободы",
+                        subtitle: "24 часа без никотина",
+                        cardDescription: "Сутки свободы — серьёзный рубеж.",
+                        healthBenefit: "Риск сердечного приступа начинает снижаться.",
+                        medal: .gold,
+                        rewardTheme: .pinkNebula),
+        AchievementItem(title: "30 часов уверенности",
+                        subtitle: "30 часов без никотина",
+                        cardDescription: "Уверенность крепнет с каждым часом.",
+                        healthBenefit: "Организм активнее выводит продукты распада.",
+                        medal: .gold,
+                        rewardTheme: .auroraGlow),
+        AchievementItem(title: "36 часов восстановления",
+                        subtitle: "36 часов без никотина",
+                        cardDescription: "Тело перестраивается на новый ритм.",
+                        healthBenefit: "Обоняние и вкус становятся ярче.",
+                        medal: .gold,
+                        rewardTheme: .lavaBurst),
+        AchievementItem(title: "42 часа фокуса",
+                        subtitle: "42 часа без никотина",
+                        cardDescription: "Фокус на здоровье становится сильнее.",
+                        healthBenefit: "Лёгкие постепенно избавляются от слизи.",
+                        medal: .platinum,
+                        rewardTheme: .iceCrystal),
+        AchievementItem(title: "48 часов без никотина",
+                        subtitle: "48 часов без никотина",
+                        cardDescription: "Два дня подряд — серьёзный шаг.",
+                        healthBenefit: "Нервные окончания восстанавливаются.",
+                        medal: .platinum,
+                        rewardTheme: .frescoCrush),
+        AchievementItem(title: "60 часов контроля",
+                        subtitle: "60 часов без никотина",
+                        cardDescription: "Почти 2,5 дня устойчивого контроля.",
+                        healthBenefit: "Дыхание глубже, выносливость выше.",
+                        medal: .platinum,
+                        rewardTheme: .сyberSplash),
+        AchievementItem(title: "72 часа свободы",
+                        subtitle: "72 часа без никотина",
+                        cardDescription: "Три дня — привычка уже ослабевает.",
+                        healthBenefit: "Лёгкие заметно очищаются, кашель уменьшается.",
+                        medal: .diamond,
+                        rewardTheme: .oceanDeep),
+        AchievementItem(title: "84 часа устойчивости",
+                        subtitle: "84 часа без никотина",
+                        cardDescription: "Устойчивость растёт и становится заметной.",
+                        healthBenefit: "Снижается зависимость, стабильнее настроение.",
+                        medal: .diamond),
+        AchievementItem(title: "96 часов ясности",
+                        subtitle: "96 часов без никотина",
+                        cardDescription: "Четыре дня ясного выбора.",
+                        healthBenefit: "Кровообращение улучшается, больше энергии.",
+                        medal: .diamond),
+        AchievementItem(title: "108 часов спокойствия",
+                        subtitle: "108 часов без никотина",
+                        cardDescription: "Новая норма формируется день за днём.",
+                        healthBenefit: "Сон глубже, меньше тревожности.",
+                        medal: .aurora),
+        AchievementItem(title: "180 часов осознанности",
+                        subtitle: "180 часов без никотина",
+                        cardDescription: "Больше недели стабильности и уверенности.",
+                        healthBenefit: "Сердечно‑сосудистая нагрузка ниже.",
+                        medal: .aurora),
+        AchievementItem(title: "192 часа устойчивости",
+                        subtitle: "192 часа без никотина",
+                        cardDescription: "Сильная серия и уверенный прогресс.",
+                        healthBenefit: "Устойчивость к триггерам заметно выше.",
+                        medal: .aurora),
+        AchievementItem(title: "200 часов свободы",
+                        subtitle: "200 часов без никотина",
+                        cardDescription: "Новая привычка закрепляется уверенно.",
+                        healthBenefit: "Формируется новая привычка без никотина.",
+                        medal: .aurora)
     ]
 
     var body: some View {
@@ -47,17 +156,25 @@ struct AchievementsScreen: View {
                     header
 
                     ForEach(achievements) { achievement in
-                        AchievementCard(item: achievement, primaryTextColor: primaryTextColor)
+                        AchievementCard(item: achievement,
+                                        primaryTextColor: primaryTextColor,
+                                        onTap: { selectedAchievement = achievement })
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.top, 12)
                 .padding(.bottom, 40)
             }
         }
         .navigationTitle("Achievements")
         .navigationBarTitleDisplayMode(.large)
         .onAppear(perform: ensureAppearanceMigration)
+        .sheet(item: $selectedAchievement) { achievement in
+            AchievementPreviewSheet(item: achievement,
+                                    primaryTextColor: primaryTextColor,
+                                    backgroundStyle: backgroundStyle)
+                .presentationBackground(.clear)
+        }
     }
 }
 
@@ -73,13 +190,11 @@ private extension AchievementsScreen {
 
     var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Achievements")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(primaryTextColor)
-            Text("Отмечай прогресс и открывай новые вехи.")
+            Text("View your progress and unlocked badges.")
                 .font(.callout)
                 .foregroundStyle(primaryTextColor.opacity(0.75))
         }
+        .padding(.bottom, 8)
     }
 
     func ensureAppearanceMigration() {
@@ -90,16 +205,25 @@ private extension AchievementsScreen {
     }
 }
 
-private struct AchievementItem: Identifiable {
+struct AchievementItem: Identifiable {
     let id = UUID()
     let title: String
     let subtitle: String
+    let cardDescription: String
+    let healthBenefit: String
     let medal: MedalStyle
     let rewardTheme: DashboardBackgroundStyle?
 
-    init(title: String, subtitle: String, medal: MedalStyle, rewardTheme: DashboardBackgroundStyle? = nil) {
+    init(title: String,
+         subtitle: String,
+         cardDescription: String,
+         healthBenefit: String,
+         medal: MedalStyle,
+         rewardTheme: DashboardBackgroundStyle? = nil) {
         self.title = title
         self.subtitle = subtitle
+        self.cardDescription = cardDescription
+        self.healthBenefit = healthBenefit
         self.medal = medal
         self.rewardTheme = rewardTheme
     }
@@ -108,71 +232,40 @@ private struct AchievementItem: Identifiable {
 private struct AchievementCard: View {
     let item: AchievementItem
     let primaryTextColor: Color
+    let onTap: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            MedalBadgeView(style: item.medal)
+        Button(action: onTap) {
+            frontSide
+        }
+        .buttonStyle(.plain)
+    }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(item.title)
-                    .font(.headline)
-                    .foregroundStyle(primaryTextColor)
-                Text(item.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(primaryTextColor.opacity(0.7))
+    private var frontSide: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 14) {
+                MedalBadgeView(style: item.medal)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.title)
+                        .font(.headline)
+                        .foregroundStyle(primaryTextColor)
+                    Text(item.cardDescription)
+                        .font(.subheadline)
+                        .foregroundStyle(primaryTextColor.opacity(0.7))
+                }
+
+                Spacer(minLength: 0)
             }
-
-            Spacer(minLength: 0)
         }
         .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(.clear, in: .rect(cornerRadius: 20))
         .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 8)
-        .overlay(alignment: .bottomTrailing) {
-            if let rewardTheme = item.rewardTheme {
-                ThemeRewardBadge(style: rewardTheme, primaryTextColor: primaryTextColor)
-                    .padding(12)
-            }
-        }
     }
 }
 
-private struct ThemeRewardBadge: View {
-    let style: DashboardBackgroundStyle
-    let primaryTextColor: Color
-
-    var body: some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(style.previewGradient(for: .dark))
-                .frame(width: 44, height: 28)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Награда")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(primaryTextColor.opacity(0.85))
-                Text("Тема \(style.name)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(primaryTextColor)
-            }
-        }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 10)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.08))
-        )
-        .overlay(
-            Capsule()
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-        )
-    }
-}
-
-private enum MedalStyle: CaseIterable {
+enum MedalStyle: CaseIterable {
     case bronze
     case silver
     case gold
@@ -269,31 +362,31 @@ private enum MedalStyle: CaseIterable {
     }
 }
 
-private struct MedalBadgeView: View {
+struct MedalBadgeView: View {
     let style: MedalStyle
 
     var body: some View {
         ZStack {
             RibbonShape()
                 .fill(style.ribbonColor)
-                .frame(width: 34, height: 22)
-                .offset(y: -14)
+                .frame(width: 42, height: 26)
+                .offset(y: -18)
 
             Circle()
                 .fill(style.gradient)
-                .frame(width: 44, height: 44)
+                .frame(width: 56, height: 56)
                 .overlay(
                     Circle()
                         .stroke(Color.white.opacity(0.25), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.2), radius: 6, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 5)
 
             Image(systemName: style.glyph)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Color.white.opacity(0.95))
                 .shadow(color: Color.black.opacity(0.35), radius: 3, x: 0, y: 2)
         }
-        .frame(width: 48, height: 56)
+        .frame(width: 64, height: 72)
     }
 }
 

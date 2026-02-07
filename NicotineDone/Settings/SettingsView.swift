@@ -47,8 +47,7 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         trackingSection
-                        achievementsSection
-                        appearanceSection
+                        navigationButtonsSection
                         resetSection
                     }
                     .padding(.horizontal, 20)
@@ -180,103 +179,106 @@ private extension SettingsView {
                             .font(.body.weight(.semibold))
                     }
                 }
+
             }
         }
     }
 
-    var appearanceSection: some View {
-        settingsCard(title: "Appearance") {
-            Button {
-                showAppearancePicker = true
-            } label: {
-                HStack(spacing: 16) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                             .frame(width: 64, height: 64)
-                             .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
-
-                        Image(systemName: "paintpalette.fill")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(primaryTextColor)
-                            .shadow(color: .white.opacity(0.5), radius: 12)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Application theme")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(primaryTextColor)
-                        Text(backgroundStyle.name)
-                            .font(.caption)
-                            .foregroundStyle(primaryTextColor)
-                    }
-            
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 24))
-                .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 8)
-            }
-            .overlay(alignment: .trailing) {
-                Circle()
-                        .glassEffect(.clear)           
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(primaryTextColor)
-                        )
-                        .padding(12)
-            }
-            .buttonStyle(.plain)
+    var navigationButtonsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            achievementsButton
+            appearanceButton
         }
     }
 
-    var achievementsSection: some View {
-        settingsCard(title: "Achievements") {
-            NavigationLink {
-                AchievementsScreen(user: user)
-            } label: {
-                HStack(spacing: 16) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .frame(width: 64, height: 64)
-                            .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+    var achievementsButton: some View {
+        NavigationLink {
+            AchievementsScreen(user: user)
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .frame(width: 64, height: 64)
+                        .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
 
-                        Image(systemName: "medal.fill")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(primaryTextColor)
-                            .shadow(color: .white.opacity(0.5), radius: 12)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Achievements")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(primaryTextColor)
-                        Text("View your progress and unlocked badges.")
-                            .font(.caption)
-                            .foregroundStyle(primaryTextColor.opacity(0.8))
-                    }
+                    Image(systemName: "medal.fill")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(primaryTextColor)
+                        .shadow(color: .white.opacity(0.5), radius: 12)
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 24))
-                .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 8)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Achievements")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(primaryTextColor)
+                    Text("View your progress and unlocked badges.")
+                        .font(.caption)
+                        .foregroundStyle(primaryTextColor.opacity(0.8))
+                }
             }
-            .overlay(alignment: .trailing) {
-                Circle()
-                    .glassEffect(.clear)
-                    .frame(width: 40, height: 40)
-                    .overlay(
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(primaryTextColor)
-                    )
-                    .padding(12)
-            }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 24))
+            .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 8)
         }
+        .overlay(alignment: .trailing) {
+            Circle()
+                .glassEffect(.clear)
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(primaryTextColor)
+                )
+                .padding(12)
+        }
+        .buttonStyle(.plain)
+    }
+
+    var appearanceButton: some View {
+        Button {
+            showAppearancePicker = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .frame(width: 64, height: 64)
+                        .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+
+                    Image(systemName: "paintpalette.fill")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(primaryTextColor)
+                        .shadow(color: .white.opacity(0.5), radius: 12)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Application theme")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(primaryTextColor)
+                    Text(backgroundStyle.name)
+                        .font(.caption)
+                        .foregroundStyle(primaryTextColor)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 24))
+            .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 8)
+        }
+        .overlay(alignment: .trailing) {
+            Circle()
+                .glassEffect(.clear)
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(primaryTextColor)
+                )
+                .padding(12)
+        }
+        .buttonStyle(.plain)
     }
 
     var resetSection: some View {

@@ -85,19 +85,9 @@ struct MainDashboardView: View {
 
                     holdButton
 
-                    VStack(spacing: 8) {
-                        Text(remainingLabel)
-                            .font(.system(size: 16, weight: .semibold))
-                            .tracking(1.2)
-                            .foregroundStyle(primaryTextColor)
-
-                        Text("\(nextEntryLabel)".uppercased())
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(primaryTextColor)
-                    }
-
                     Spacer()
 
+                    consumptionStatusBar
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 32)
@@ -256,6 +246,32 @@ private extension MainDashboardView {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    var consumptionStatusBar: some View {
+        VStack(spacing: 8) {
+            GeometryReader { proxy in
+                let width = max(proxy.size.width, 1)
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(primaryTextColor.opacity(0.15))
+
+                    Capsule()
+                        .fill(consumptionStatusColor)
+                        .frame(width: width * nextEntryProgress)
+                        .animation(.easeInOut(duration: 0.35), value: nextEntryProgress)
+                }
+            }
+            .frame(height: 14)
+
+            Text(consumptionStatusText.uppercased())
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(1.1)
+                .foregroundStyle(primaryTextColor)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(consumptionStatusAccessibilityLabel)
+    }
 }
 
 // MARK: - Computed Values
@@ -322,16 +338,6 @@ private extension MainDashboardView {
         isDecrementHoldIntent ? .black : .white
     }
 
-    var remainingLabel: String {
-        let remaining = max(dailyLimit - todayCount, 0)
-        return String.localizedStringWithFormat(
-            NSLocalizedString("%1$@ LEFT TODAY: %2$d/%3$d", comment: "Remaining entries label"),
-            nicotineMethodLabel,
-            remaining,
-            dailyLimit
-        )
-    }
-
     var nextEntryLabel: String {
         guard dailyLimit > 0 else {
             return NSLocalizedString("Next at: anytime", comment: "No limit fallback")
@@ -349,6 +355,48 @@ private extension MainDashboardView {
         return String.localizedStringWithFormat(
             NSLocalizedString("Next at: %@", comment: "Next entry time"),
             formatted
+        )
+    }
+
+    var remainingCount: Int {
+        max(dailyLimit - todayCount, 0)
+    }
+
+    var canConsumeNow: Bool {
+        guard dailyLimit > 0 else { return true }
+        if remainingCount == 0 { return false }
+        guard let nextSuggestedDate else { return true }
+        return nextSuggestedDate <= now
+    }
+
+    var nextEntryProgress: Double {
+        if canConsumeNow { return 1 }
+        guard dailyLimit > 0 else { return 1 }
+        guard let lastEntryDate, let nextSuggestedDate else { return 0 }
+        let interval = max(24 * 60 * 60 / Double(max(dailyLimit, 1)), 1)
+        let elapsed = max(now.timeIntervalSince(lastEntryDate), 0)
+        if nextSuggestedDate <= now { return 1 }
+        return min(max(elapsed / interval, 0), 1)
+    }
+
+    var consumptionStatusColor: Color {
+        canConsumeNow ? Color.green.opacity(0.85) : Color.red.opacity(0.85)
+    }
+
+    var consumptionStatusText: String {
+        if canConsumeNow {
+            return NSLocalizedString("Allowed now", comment: "Status label when can consume")
+        }
+        return NSLocalizedString("Not yet", comment: "Status label when cannot consume yet")
+    }
+
+    var consumptionStatusAccessibilityLabel: String {
+        if canConsumeNow {
+            return NSLocalizedString("You can consume now", comment: "Accessibility status when can consume")
+        }
+        return String.localizedStringWithFormat(
+            NSLocalizedString("Not allowed yet. Next at: %@", comment: "Accessibility status when cannot consume"),
+            nextEntryLabel
         )
     }
 

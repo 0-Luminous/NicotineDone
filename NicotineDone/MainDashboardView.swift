@@ -249,24 +249,49 @@ private extension MainDashboardView {
 
     var consumptionStatusBar: some View {
         VStack(spacing: 8) {
-            GeometryReader { proxy in
-                let width = max(proxy.size.width, 1)
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(primaryTextColor.opacity(0.15))
+            if shouldShowStreak {
+                let circleSize: CGFloat = 16
+                let spacing: CGFloat = 6
 
-                    Capsule()
-                        .fill(consumptionStatusColor)
-                        .frame(width: width * nextEntryProgress)
-                        .animation(.easeInOut(duration: 0.35), value: nextEntryProgress)
+                GeometryReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: spacing) {
+                            ForEach(0..<streakCircleCount, id: \.self) { index in
+                                Circle()
+                                    .fill(index < streakCirclesFilled ? Color.green.opacity(0.85) : primaryTextColor.opacity(0.22))
+                                    .frame(width: circleSize, height: circleSize)
+                            }
+                        }
+                        .frame(minWidth: proxy.size.width, alignment: .center)
+                        .padding(.horizontal, 2)
+                    }
                 }
-            }
-            .frame(height: 14)
+                .frame(height: circleSize)
 
-            Text(consumptionStatusText.uppercased())
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(1.1)
-                .foregroundStyle(primaryTextColor)
+                Text(streakStatusText.uppercased())
+                    .font(.system(size: 12, weight: .semibold))
+                    .tracking(1.1)
+                    .foregroundStyle(primaryTextColor)
+            } else {
+                GeometryReader { proxy in
+                    let width = max(proxy.size.width, 1)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(primaryTextColor.opacity(0.15))
+
+                        Capsule()
+                            .fill(consumptionStatusColor)
+                            .frame(width: width * nextEntryProgress)
+                            .animation(.easeInOut(duration: 0.35), value: nextEntryProgress)
+                    }
+                }
+                .frame(height: 14)
+
+                Text(consumptionStatusText.uppercased())
+                    .font(.system(size: 12, weight: .semibold))
+                    .tracking(1.1)
+                    .foregroundStyle(primaryTextColor)
+            }
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -391,6 +416,9 @@ private extension MainDashboardView {
     }
 
     var consumptionStatusAccessibilityLabel: String {
+        if shouldShowStreak {
+            return streakAccessibilityLabel
+        }
         if canConsumeNow {
             return NSLocalizedString("You can consume now", comment: "Accessibility status when can consume")
         }
@@ -399,6 +427,75 @@ private extension MainDashboardView {
             nextEntryLabel
         )
     }
+
+    var shouldShowStreak: Bool {
+        canConsumeNow && (currentAbstinenceInterval ?? 0) >= 3600
+    }
+
+    var abstinenceHours: Int {
+        Int(floor((currentAbstinenceInterval ?? 0) / 3600))
+    }
+
+    var streakMilestones: [Int] {
+        [6, 9, 12, 15, 18, 24, 30, 36, 42, 48, 60, 72, 84, 96, 108, 180, 192, 200]
+    }
+
+    var streakHoursTarget: Int {
+        let hours = max(abstinenceHours, 1)
+        return streakMilestones.first(where: { $0 >= hours }) ?? (streakMilestones.last ?? 6)
+    }
+
+    var maxStreakCircles: Int {
+        12
+    }
+
+    var streakUnitHours: Int {
+        let candidates = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]
+        let target = max(streakHoursTarget, 1)
+        return candidates.first(where: { Int(ceil(Double(target) / Double($0))) <= maxStreakCircles }) ?? 30
+    }
+
+    var streakDisplayTarget: Int {
+        let target = max(streakHoursTarget, 1)
+        let unit = max(streakUnitHours, 1)
+        return Int(ceil(Double(target) / Double(unit))) * unit
+    }
+
+    var streakHoursFilled: Int {
+        min(max(abstinenceHours, 0), streakDisplayTarget)
+    }
+
+    var streakCircleCount: Int {
+        Int(ceil(Double(streakDisplayTarget) / Double(streakUnitHours)))
+    }
+
+    var streakCirclesFilled: Int {
+        let filled = max(streakHoursFilled, 0)
+        let fullUnits = filled / streakUnitHours
+        let hasPartial = filled % streakUnitHours != 0
+        return min(fullUnits + (hasPartial ? 1 : 0), streakCircleCount)
+    }
+
+    func streakCircleLabel(for index: Int) -> Int {
+        streakUnitHours
+    }
+
+    var streakStatusText: String {
+        String.localizedStringWithFormat(
+            NSLocalizedString("Streak %1$d/%2$d hours", comment: "Streak status label"),
+            streakHoursFilled,
+            streakDisplayTarget
+        )
+    }
+
+    var streakAccessibilityLabel: String {
+        String.localizedStringWithFormat(
+            NSLocalizedString("Streak progress %1$d of %2$d hours", comment: "Streak accessibility label"),
+            streakHoursFilled,
+            streakDisplayTarget
+        )
+    }
+
 
     var entryTypeLabel: String {
         switch entryType {

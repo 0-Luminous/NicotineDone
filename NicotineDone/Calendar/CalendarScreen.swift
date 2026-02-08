@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import Charts
 
 struct CalendarScreen: View {
     @Environment(\.managedObjectContext) private var context
@@ -574,6 +575,9 @@ private struct DailyDetailSheet: View {
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
 
+    @State private var selectedMode: DailyDetailMode = .list
+    @State private var dailyTrendPoints: [DailyTrendPoint] = []
+
     init(user: User, date: Date) {
         self.user = user
         self.date = date
@@ -591,62 +595,28 @@ private struct DailyDetailSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
+            ZStack(alignment: .top) {
                 backgroundGradient
                     .ignoresSafeArea()
 
-                if entries.isEmpty {
-                    VStack(spacing: 16) {
-                        Spacer()
-
-                        Image("men")
-                            .resizable()
-                            .scaledToFit()
-                            .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 22))
-                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                            .frame(maxWidth:.infinity)
-                            .padding(.horizontal, 20)
-                            .opacity(0.85)
-
-                        Text("Отличная работа!\n Сегодня без никотина.")
-                            .font(.headline)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(primaryTextColor)
-                            .padding(.horizontal, 24)
-
-                        Spacer()
-                    }
-                } else {
-                    List {
-                        Section(header: Text(formattedDate)
-                            .foregroundStyle(primaryTextColor)) {
-                            ForEach(entries) { entry in
-                                HStack(alignment: .center, spacing: 12) {
-                                    if let iconName = methodIconName(for: entry) {
-                                        Image(iconName)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                            .frame(height: 40)
-                                    }
-
-                                    VStack(alignment: .center, spacing: 4) {
-                                        Text(timeString(for: entry.createdAt ?? Date()))
-                                            .font(.headline)
-                                            .foregroundStyle(primaryTextColor)
-                                        Text(consumptionDescription(for: entry))
-                                            .font(.caption)
-                                            .foregroundStyle(primaryTextColor)
-                                    }
-                                }
-                                .padding(.vertical, 6)
-                                .listRowBackground(Color.clear)
-                            }
+                VStack(spacing: 12) {
+                    Picker("Daily detail mode", selection: $selectedMode) {
+                        ForEach(DailyDetailMode.allCases) { mode in
+                            Text(LocalizedStringKey(mode.labelKey))
+                                .tag(mode)
                         }
-                        .listRowBackground(Color.clear)
                     }
-                    .scrollContentBackground(.hidden)
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                    if selectedMode == .list {
+                        listContent
+                    } else {
+                        trendContent
+                    }
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
             }
             .navigationTitle("Day details")
             .toolbar {
@@ -655,6 +625,119 @@ private struct DailyDetailSheet: View {
                 }
             }
         }
+        .onAppear(perform: refreshTrendData)
+        .onChange(of: entries.count) { _ in
+            refreshTrendData()
+        }
+    }
+
+    @ViewBuilder
+    private var listContent: some View {
+        if entries.isEmpty {
+            VStack(spacing: 16) {
+                Spacer()
+
+                Image("men")
+                    .resizable()
+                    .scaledToFit()
+                    .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 22))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 20)
+                    .opacity(0.85)
+
+                Text("Отличная работа!\n Сегодня без никотина.")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(primaryTextColor)
+                    .padding(.horizontal, 24)
+
+                Spacer()
+            }
+        } else {
+            List {
+                Section(header: Text(formattedDate)
+                    .foregroundStyle(primaryTextColor)) {
+                        ForEach(entries) { entry in
+                            HStack(alignment: .center, spacing: 12) {
+                                if let iconName = methodIconName(for: entry) {
+                                    Image(iconName)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        .frame(height: 40)
+                                }
+
+                                VStack(alignment: .center, spacing: 4) {
+                                    Text(timeString(for: entry.createdAt ?? Date()))
+                                        .font(.headline)
+                                        .foregroundStyle(primaryTextColor)
+                                    Text(consumptionDescription(for: entry))
+                                        .font(.caption)
+                                        .foregroundStyle(primaryTextColor)
+                                }
+                            }
+                            .padding(.vertical, 6)
+                            .listRowBackground(Color.clear)
+                        }
+                    }
+                    .listRowBackground(Color.clear)
+            }
+            .scrollContentBackground(.hidden)
+        }
+    }
+
+    @ViewBuilder
+    private var trendContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(formattedDate)
+                .font(.headline)
+                .foregroundStyle(primaryTextColor)
+
+            if dailyTrendPoints.isEmpty {
+                Text("stats_chart_more_data_needed")
+                    .frame(maxWidth: .infinity, minHeight: 200, alignment: .center)
+                    .foregroundStyle(primaryTextColor.opacity(0.7))
+            } else {
+                Chart(dailyTrendPoints) { point in
+                    LineMark(
+                        x: .value(localized("stats_chart_axis_hour"), point.date, unit: .hour),
+                        y: .value(localized("stats_chart_axis_count"), point.count)
+                    )
+                    .foregroundStyle(Color.accentColor)
+
+                    AreaMark(
+                        x: .value(localized("stats_chart_axis_hour"), point.date, unit: .hour),
+                        y: .value(localized("stats_chart_axis_count"), point.count)
+                    )
+                    .foregroundStyle(LinearGradient(colors: [.accentColor.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom))
+
+                    PointMark(
+                        x: .value(localized("stats_chart_axis_hour"), point.date, unit: .hour),
+                        y: .value(localized("stats_chart_axis_count"), point.count)
+                    )
+                    .symbolSize(30)
+                    .foregroundStyle(Color.accentColor)
+                }
+                .frame(height: 200)
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.14))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 20))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
     }
 
     private var formattedDate: String {
@@ -692,6 +775,47 @@ private struct DailyDetailSheet: View {
         }
     }
 
+    private func refreshTrendData() {
+        let stats = StatsService(context: context)
+        let entryType = user.product.entryType
+        let dayTotals = stats.totalsForHoursInDay(user: user, date: date, type: entryType)
+        let dayCount = stats.countForDay(user: user, date: date, type: entryType)
+        if dayTotals.isEmpty && dayCount == 0 {
+            dailyTrendPoints = []
+        } else {
+            dailyTrendPoints = pointsForHoursInDay(totals: dayTotals, anchor: date, fallbackCount: dayCount)
+        }
+    }
+
+    private func pointsForHoursInDay(totals: [Date: Int], anchor: Date, fallbackCount: Int) -> [DailyTrendPoint] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: anchor)
+
+        var normalizedTotals: [Date: Int] = [:]
+        for (date, count) in totals {
+            let hour = calendar.component(.hour, from: date)
+            guard let hourDate = calendar.date(byAdding: .hour, value: hour, to: start) else { continue }
+            normalizedTotals[hourDate] = count
+        }
+
+        var points: [DailyTrendPoint] = []
+        points.reserveCapacity(24)
+        for hour in 0..<24 {
+            guard let date = calendar.date(byAdding: .hour, value: hour, to: start) else { continue }
+            points.append(DailyTrendPoint(date: date, count: normalizedTotals[date, default: 0]))
+        }
+
+        if points.allSatisfy({ $0.count == 0 }) && fallbackCount > 0 {
+            return [DailyTrendPoint(date: start, count: fallbackCount)]
+        }
+
+        return points
+    }
+
+    private func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
+    }
+
     private var backgroundStyle: DashboardBackgroundStyle {
         style(for: colorScheme)
     }
@@ -716,6 +840,26 @@ private struct DailyDetailSheet: View {
         backgroundIndexDark = legacyBackgroundIndex
         appearanceStylesMigrated = true
     }
+}
+
+private enum DailyDetailMode: String, CaseIterable, Identifiable {
+    case list
+    case trend
+
+    var id: String { rawValue }
+
+    var labelKey: String {
+        switch self {
+        case .list: return "daily_detail_segment_list"
+        case .trend: return "daily_detail_segment_trend"
+        }
+    }
+}
+
+private struct DailyTrendPoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let count: Int
 }
 
 private extension Calendar {

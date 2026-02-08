@@ -65,6 +65,8 @@
 "stats_chart_axis_hour" = "Час";
 "stats_chart_axis_count" = "Количество";
 "stats_chart_more_data_needed" = "Для статистики требуется больше данных";
+"daily_detail_segment_list" = "Список";
+"daily_detail_segment_trend" = "Динамика";
 "stats_financial_title" = "Финансовый обзор";
 "stats_financial_subtitle" = "За последние 30 дней";
 "stats_financial_limit_label" = "Месячный лимит";

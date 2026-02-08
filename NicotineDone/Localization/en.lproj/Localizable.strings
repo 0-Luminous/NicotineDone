@@ -65,6 +65,8 @@
 "stats_chart_axis_hour" = "Hour";
 "stats_chart_axis_count" = "Count";
 "stats_chart_more_data_needed" = "More data is needed to show stats.";
+"daily_detail_segment_list" = "List";
+"daily_detail_segment_trend" = "Trend";
 "stats_financial_title" = "Financial overview";
 "stats_financial_subtitle" = "Based on last 30 days";
 "stats_financial_limit_label" = "Monthly limit";

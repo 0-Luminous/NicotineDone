@@ -518,15 +518,7 @@ private struct DailyDetailSheet: View {
                     .foregroundStyle(primaryTextColor)) {
                         ForEach(entries) { entry in
                             HStack(alignment: .center, spacing: 12) {
-                                if let iconName = methodIconName(for: entry) {
-                                    Image(iconName)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                        .frame(height: 40)
-                                }
-
-                                VStack(alignment: .center, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 4) {
                                     Text(timeString(for: entry.createdAt ?? Date()))
                                         .font(.headline)
                                         .foregroundStyle(primaryTextColor)
@@ -534,7 +526,18 @@ private struct DailyDetailSheet: View {
                                         .font(.caption)
                                         .foregroundStyle(primaryTextColor)
                                 }
+
+                                Spacer(minLength: 0)
+
+                                if let iconName = methodIconName(for: entry) {
+                                    Image(iconName)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        .frame(height: iconHeight(for: entry))
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 6)
                             .listRowBackground(Color.clear)
                         }
@@ -617,9 +620,17 @@ private struct DailyDetailSheet: View {
 
         switch type {
         case .cig:
-            return NSLocalizedString("Cigarettes", comment: "entry detail label")
+            return NSLocalizedString("onboarding_method_cigarettes", comment: "entry detail label")
         case .puff:
-            return NSLocalizedString("Vape", comment: "entry detail label")
+            return NSLocalizedString("onboarding_method_refillable_vape", comment: "entry detail label")
+        case .disposableVape:
+            return NSLocalizedString("onboarding_method_disposable_vape", comment: "entry detail label")
+        case .heatedTobacco:
+            return NSLocalizedString("onboarding_method_heated_tobacco", comment: "entry detail label")
+        case .snusOrPouches:
+            return NSLocalizedString("onboarding_method_snus_or_pouches", comment: "entry detail label")
+        case .hookah:
+            return NSLocalizedString("onboarding_method_hookah", comment: "entry detail label")
         }
     }
 
@@ -630,6 +641,24 @@ private struct DailyDetailSheet: View {
             return NicotineMethod.cigarettes.iconAssetName
         case .puff:
             return NicotineMethod.refillableVape.iconAssetName
+        case .disposableVape:
+            return NicotineMethod.disposableVape.iconAssetName
+        case .heatedTobacco:
+            return NicotineMethod.heatedTobacco.iconAssetName
+        case .snusOrPouches:
+            return NicotineMethod.snusOrPouches.iconAssetName
+        case .hookah:
+            return NicotineMethod.hookah.iconAssetName
+        }
+    }
+
+    private func iconHeight(for entry: Entry) -> CGFloat {
+        guard let type = EntryType(rawValue: entry.type) else { return 40 }
+        switch type {
+        case .snusOrPouches, .hookah:
+            return 208
+        default:
+            return 40
         }
     }
 

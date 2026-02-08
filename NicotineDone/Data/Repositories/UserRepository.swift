@@ -34,10 +34,18 @@ final class CoreDataUserRepository: UserRepository {
 
     private func productType(for profile: NicotineProfile) -> ProductType {
         switch profile.method {
-        case .cigarettes, .hookah, .heatedTobacco, .snusOrPouches:
-            return .cigarette
-        case .disposableVape, .refillableVape:
-            return .vape
+        case .cigarettes:
+            return .cigarettes
+        case .hookah:
+            return .hookah
+        case .heatedTobacco:
+            return .heatedTobacco
+        case .snusOrPouches:
+            return .snusOrPouches
+        case .disposableVape:
+            return .disposableVape
+        case .refillableVape:
+            return .refillableVape
         }
     }
 

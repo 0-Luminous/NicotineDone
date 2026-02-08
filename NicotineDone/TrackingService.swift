@@ -47,10 +47,6 @@ final class TrackingService {
             return explicitCost
         }
 
-        guard type == .cig else {
-            return 0
-        }
-
         let packSize = max(Int(user.packSize), 0)
         let packCost = user.packCost
         guard packSize > 0, packCost > 0 else {

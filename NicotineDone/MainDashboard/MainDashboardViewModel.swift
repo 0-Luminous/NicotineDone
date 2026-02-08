@@ -103,6 +103,17 @@ final class MainDashboardViewModel: ObservableObject {
         return min(fullUnits + (hasPartial ? 1 : 0), streakCircleCount)
     }
 
+    var streakFullUnits: Int {
+        let filled = max(streakHoursFilled, 0)
+        return max(min(filled / max(streakUnitHours, 1), streakCircleCount), 0)
+    }
+
+    var streakPartialProgress: Double {
+        let unit = max(streakUnitHours, 1)
+        let partial = max(streakHoursFilled, 0) % unit
+        return Double(partial) / Double(unit)
+    }
+
     var streakStatusText: String {
         String.localizedStringWithFormat(
             NSLocalizedString("Streak %1$d/%2$d hours", comment: "Streak status label"),
@@ -121,8 +132,18 @@ final class MainDashboardViewModel: ObservableObject {
 
     var entryTypeLabel: String {
         switch entryType {
-        case .cig: return NSLocalizedString("CIGARETTES", comment: "cigarettes label")
-        case .puff: return NSLocalizedString("PUFFS", comment: "puffs label")
+        case .cig:
+            return NSLocalizedString("onboarding_method_cigarettes", comment: "cigarettes label").uppercased()
+        case .puff:
+            return NSLocalizedString("onboarding_method_refillable_vape", comment: "vape label").uppercased()
+        case .disposableVape:
+            return NSLocalizedString("onboarding_method_disposable_vape", comment: "vape label").uppercased()
+        case .heatedTobacco:
+            return NSLocalizedString("onboarding_method_heated_tobacco", comment: "heated tobacco label").uppercased()
+        case .snusOrPouches:
+            return NSLocalizedString("onboarding_method_snus_or_pouches", comment: "snus label").uppercased()
+        case .hookah:
+            return NSLocalizedString("onboarding_method_hookah", comment: "hookah label").uppercased()
         }
     }
 
@@ -141,8 +162,10 @@ final class MainDashboardViewModel: ObservableObject {
             key = "onboarding_method_heated_tobacco"
         case .snusOrPouches:
             key = "onboarding_method_snus_or_pouches"
-        case .disposableVape, .refillableVape:
+        case .disposableVape:
             key = "onboarding_method_disposable_vape"
+        case .refillableVape:
+            key = "onboarding_method_refillable_vape"
         }
         return NSLocalizedString(key, comment: "nicotine method label").uppercased()
     }

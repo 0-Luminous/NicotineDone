@@ -35,7 +35,7 @@ extension PersistenceController {
         let user = User(context: ctx)
         user.id = UUID()
         user.createdAt = Date()
-        user.productType = ProductType.cigarette.rawValue
+        user.productType = ProductType.cigarettes.rawValue
         user.dailyLimit = 10
         user.packSize = 20
         user.packCost = 12.5

@@ -242,13 +242,15 @@ private extension MainDashboardView {
             if viewModel.shouldShowStreak {
                 let circleSize: CGFloat = 16
                 let spacing: CGFloat = 6
+                let fullUnits = viewModel.streakFullUnits
+                let partialProgress = viewModel.streakPartialProgress
 
                 GeometryReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: spacing) {
                             ForEach(0..<viewModel.streakCircleCount, id: \.self) { index in
                                 Circle()
-                                    .fill(index < viewModel.streakCirclesFilled ? Color.green.opacity(0.85) : primaryTextColor.opacity(0.22))
+                                    .fill(streakCircleColor(index: index, fullUnits: fullUnits, partialProgress: partialProgress))
                                     .frame(width: circleSize, height: circleSize)
                             }
                         }
@@ -413,6 +415,16 @@ private extension MainDashboardView {
 
     var weekDays: [WeekDay] {
         viewModel.weekDays
+    }
+
+    func streakCircleColor(index: Int, fullUnits: Int, partialProgress: Double) -> Color {
+        if index < fullUnits {
+            return Color.green.opacity(0.85)
+        }
+        if index == fullUnits && partialProgress >= 0.5 {
+            return Color(red: 1.0, green: 0.55, blue: 0.45).opacity(0.9)
+        }
+        return primaryTextColor.opacity(0.22)
     }
 }
 

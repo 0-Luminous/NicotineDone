@@ -2,6 +2,11 @@
 "Cigarettes" = "Сигареты";
 "+ Puff" = "+ Затяжка";
 "+ Cigarette" = "+ Сигарета";
+"+ Refillable vape" = "+ Заправляемый вейп";
+"+ Disposable vape" = "+ Одноразовый вейп";
+"+ Heated tobacco" = "+ Нагреваемый табак";
+"+ Snus pouch" = "+ Пакетик снюса";
+"+ Hookah session" = "+ Сеанс кальяна";
 "Time since last use" = "Время с последнего употребления";
 "Best nicotine-free streak" = "Рекорд без никотина";
 "Start logging to enable the timer" = "Начни вести учёт, чтобы запустить таймер.";

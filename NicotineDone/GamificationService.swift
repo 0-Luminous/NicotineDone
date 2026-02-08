@@ -159,9 +159,9 @@ final class GamificationService {
         }
 
         switch entryType {
-        case .cig:
+        case .cig, .heatedTobacco, .snusOrPouches, .hookah:
             return 15.0
-        case .puff:
+        case .puff, .disposableVape:
             return 8.0
         }
     }

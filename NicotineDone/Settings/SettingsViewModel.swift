@@ -27,7 +27,7 @@ final class SettingsViewModel: ObservableObject {
         if let profile = storedProfiles.first {
             selectedMethod = profile.method
         } else {
-            selectedMethod = nicotineMethod(for: ProductType(rawValue: user.productType) ?? .cigarette)
+            selectedMethod = nicotineMethod(for: ProductType(rawValue: user.productType) ?? .cigarettes)
         }
         dailyLimit = Double(user.dailyLimit)
     }
@@ -68,7 +68,7 @@ final class SettingsViewModel: ObservableObject {
             if let fallback = storedProfiles.first {
                 applyProfileSelection(fallback, persist: false)
             } else {
-                selectedMethod = nicotineMethod(for: ProductType(rawValue: user.productType) ?? .cigarette)
+                selectedMethod = nicotineMethod(for: ProductType(rawValue: user.productType) ?? .cigarettes)
                 dailyLimit = Double(user.dailyLimit)
                 latestProfile = nil
             }
@@ -77,19 +77,35 @@ final class SettingsViewModel: ObservableObject {
 
     func nicotineMethod(for product: ProductType) -> NicotineMethod {
         switch product {
-        case .cigarette:
+        case .cigarettes:
             return .cigarettes
-        case .vape:
+        case .refillableVape:
             return .refillableVape
+        case .disposableVape:
+            return .disposableVape
+        case .heatedTobacco:
+            return .heatedTobacco
+        case .snusOrPouches:
+            return .snusOrPouches
+        case .hookah:
+            return .hookah
         }
     }
 
     func productType(for method: NicotineMethod) -> ProductType {
         switch method {
-        case .cigarettes, .hookah, .heatedTobacco, .snusOrPouches:
-            return .cigarette
-        case .disposableVape, .refillableVape:
-            return .vape
+        case .cigarettes:
+            return .cigarettes
+        case .hookah:
+            return .hookah
+        case .heatedTobacco:
+            return .heatedTobacco
+        case .snusOrPouches:
+            return .snusOrPouches
+        case .disposableVape:
+            return .disposableVape
+        case .refillableVape:
+            return .refillableVape
         }
     }
 

@@ -10,13 +10,14 @@ import CoreData
 
 struct RootView: View {
     @EnvironmentObject private var appViewModel: AppViewModel
+    @Environment(\.appEnvironment) private var appEnvironment
 
     var body: some View {
         Group {
             if appViewModel.shouldShowOnboarding {
                 OnboardingView()
             } else if let user = appViewModel.user {
-                MainDashboardView(user: user)
+                MainDashboardView(user: user, environment: appEnvironment)
             } else {
                 ProgressView()
                     .onAppear(perform: appViewModel.loadUser)
@@ -28,6 +29,7 @@ struct RootView: View {
 
 #Preview {
     RootView()
-        .environmentObject(AppViewModel(context: PersistenceController.preview.container.viewContext))
+        .environment(\.appEnvironment, AppEnvironment.preview)
+        .environmentObject(AppViewModel(environment: AppEnvironment.preview))
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }

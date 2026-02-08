@@ -1,11 +1,15 @@
 import CoreData
 
 final class StatsService {
-    private let context: NSManagedObjectContext
+    private let statsRepository: StatsRepository
+    private let entryRepository: EntryRepository
     private let calendar: Calendar
 
-    init(context: NSManagedObjectContext, calendar: Calendar = .current) {
-        self.context = context
+    init(statsRepository: StatsRepository,
+         entryRepository: EntryRepository,
+         calendar: Calendar = .current) {
+        self.statsRepository = statsRepository
+        self.entryRepository = entryRepository
         self.calendar = calendar
     }
 
@@ -19,40 +23,28 @@ final class StatsService {
 
     func bumpDailyCount(for user: User, at date: Date, type: EntryType) {
         let sod = startOfDay(for: date)
-        let stat = fetchDailyStat(user: user, date: sod, type: type) ?? {
-            let stat = DailyStat(context: context)
-            stat.id = UUID()
-            stat.date = sod
-            stat.count = 0
-            stat.type = type.rawValue
-            stat.user = user
-            return stat
-        }()
+        let stat = statsRepository.fetchDailyStat(user: user, date: sod, type: type)
+            ?? statsRepository.createDailyStat(user: user, date: sod, type: type)
         stat.count += 1
     }
 
     func decrementDailyCount(for user: User, at date: Date, type: EntryType) {
         let sod = startOfDay(for: date)
-        guard let stat = fetchDailyStat(user: user, date: sod, type: type) else { return }
+        guard let stat = statsRepository.fetchDailyStat(user: user, date: sod, type: type) else { return }
         stat.count = max(stat.count - 1, Int32(0))
         if stat.count == 0 {
-            context.delete(stat)
+            statsRepository.deleteDailyStat(stat)
         }
     }
 
     func countForDay(user: User, date: Date, type: EntryType) -> Int {
         let sod = startOfDay(for: date)
-        let req: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        req.fetchLimit = 1
-        req.predicate = NSPredicate(format: "user == %@ AND date == %@ AND type == %d", user, sod as NSDate, type.rawValue)
-        return Int((try? context.fetch(req).first?.count) ?? 0)
+        return Int(statsRepository.fetchDailyStat(user: user, date: sod, type: type)?.count ?? 0)
     }
 
     func countForDayAllTypes(user: User, date: Date) -> Int {
         let sod = startOfDay(for: date)
-        let req: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        req.predicate = NSPredicate(format: "user == %@ AND date == %@", user, sod as NSDate)
-        let stats = (try? context.fetch(req)) ?? []
+        let stats = statsRepository.fetchDailyStats(user: user, start: sod, end: sod, type: nil)
         return stats.reduce(0) { $0 + Int($1.count) }
     }
 
@@ -61,11 +53,7 @@ final class StatsService {
         let end = startOfDay(for: Date())
         let start = calendar.date(byAdding: .day, value: -days + 1, to: end)!
 
-        let req: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        req.predicate = NSPredicate(format: "user == %@ AND date >= %@ AND date <= %@ AND type == %d",
-                                    user, start as NSDate, end as NSDate, type.rawValue)
-
-        let stats = (try? context.fetch(req)) ?? []
+        let stats = statsRepository.fetchDailyStats(user: user, start: start, end: end, type: type)
         var map: [Date: Int] = [:]
         stats.forEach { map[$0.date ?? Date()] = Int($0.count) }
         return map
@@ -75,11 +63,7 @@ final class StatsService {
         let start = startOfDay(for: date)
         let end = endOfDay(for: date)
 
-        let request: NSFetchRequest<Entry> = Entry.fetchRequest()
-        request.predicate = NSPredicate(format: "user == %@ AND type == %d AND createdAt >= %@ AND createdAt < %@",
-                                        user, type.rawValue, start as NSDate, end as NSDate)
-
-        let entries = (try? context.fetch(request)) ?? []
+        let entries = entryRepository.fetchEntries(user: user, type: type, start: start, end: end)
         var map: [Date: Int] = [:]
         for entry in entries {
             guard let createdAt = entry.createdAt else { continue }
@@ -88,12 +72,5 @@ final class StatsService {
             map[hourDate, default: 0] += 1
         }
         return map
-    }
-
-    private func fetchDailyStat(user: User, date: Date, type: EntryType) -> DailyStat? {
-        let req: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        req.fetchLimit = 1
-        req.predicate = NSPredicate(format: "user == %@ AND date == %@ AND type == %d", user, date as NSDate, type.rawValue)
-        return try? context.fetch(req).first
     }
 }

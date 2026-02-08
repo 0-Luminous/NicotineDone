@@ -1,25 +1,20 @@
 import SwiftUI
-import CoreData
 import Combine
 import UIKit
+import CoreData
 
 struct MainDashboardView: View {
-    @Environment(\.managedObjectContext) private var context
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var user: User
+    @StateObject private var viewModel: MainDashboardViewModel
+    private let environment: AppEnvironment
 
     @AppStorage("dashboardBackgroundIndex") private var legacyBackgroundIndex: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexLight") private var backgroundIndexLight: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
 
-    @State private var todayCount: Int = 0
-    @State private var nextSuggestedDate: Date?
     @State private var showSettings = false
-    @State private var now = Date()
-    @State private var weekEntryCounts: [Date: Int] = [:]
-    @State private var lastEntryDate: Date?
-    @State private var bestAbstinenceInterval: TimeInterval = 0
 
     // Hold-to-log interaction state
     @State private var isHolding = false
@@ -35,10 +30,6 @@ struct MainDashboardView: View {
     @State private var pendingDecrementTap = false
     @State private var isCurrentHoldDecrement = false
     @State private var pendingDecrementResetWorkItem: DispatchWorkItem?
-    @State private var currentMethod: NicotineMethod?
-
-    private var entryType: EntryType { user.product.entryType }
-    private var dailyLimit: Int { max(Int(user.dailyLimit), 0) }
     private var backgroundStyle: DashboardBackgroundStyle {
         style(for: colorScheme)
     }
@@ -51,21 +42,21 @@ struct MainDashboardView: View {
     private let holdTick: TimeInterval = 0.02
     private let decrementIntentWindow: TimeInterval = 1.0
 
-    private static let nextTimeFormatter: DateFormatter = {
+    static let nextTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         formatter.locale = Locale.current
         return formatter
     }()
 
-    private static let weekdayFormatter: DateFormatter = {
+    static let weekdayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE"
         formatter.locale = Locale.current
         return formatter
     }()
 
-    private static let abstinenceFormatter: DateComponentsFormatter = {
+    static let abstinenceFormatter: DateComponentsFormatter = {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = [.day, .hour, .minute]
         formatter.unitsStyle = .abbreviated
@@ -73,6 +64,12 @@ struct MainDashboardView: View {
         formatter.zeroFormattingBehavior = [.dropAll]
         return formatter
     }()
+
+    init(user: User, environment: AppEnvironment) {
+        self.user = user
+        self.environment = environment
+        _viewModel = StateObject(wrappedValue: MainDashboardViewModel(user: user, environment: environment))
+    }
 
     var body: some View {
         NavigationStack {
@@ -94,12 +91,10 @@ struct MainDashboardView: View {
                 .padding(.bottom, 32)
             }
             .sheet(isPresented: $showSettings) {
-                SettingsView(user: user)
+                SettingsView(user: user, environment: environment)
             }
             .onAppear {
-                now = Date()
-                refreshToday(reference: now)
-                refreshCurrentMethod()
+                viewModel.onAppear()
                 startBreathingAnimation()
             }
             .onDisappear {
@@ -111,16 +106,11 @@ struct MainDashboardView: View {
                 isCurrentHoldDecrement = false
             }
             .onReceive(clock) { time in
-                let previousDay = Calendar.current.startOfDay(for: now)
-                let currentDay = Calendar.current.startOfDay(for: time)
-                now = time
-                if currentDay != previousDay {
-                    refreshToday(reference: time)
-                }
+                viewModel.updateNow(time)
             }
             .onChange(of: showSettings) { isPresented in
                 if !isPresented {
-                    refreshCurrentMethod()
+                    viewModel.refreshCurrentMethod()
                 }
             }
             .navigationTitle("")
@@ -134,7 +124,7 @@ struct MainDashboardView: View {
                     }
 
                     NavigationLink {
-                        StatsScreen(user: user)
+                        StatsScreen(user: user, environment: environment)
                     } label: {
                         Label("Stats", systemImage: "chart.bar.xaxis")
                     }
@@ -175,7 +165,7 @@ private extension MainDashboardView {
                     .clear.interactive()
                 )
                 
-            Text("\(todayCount)")
+            Text("\(viewModel.todayCount)")
                 .font(.system(size: 120, weight: .bold, design: .rounded))
                 .foregroundStyle(primaryTextColor)
                 .allowsHitTesting(false)
@@ -205,17 +195,17 @@ private extension MainDashboardView {
     var abstinenceStatsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             abstinenceStatBlock(title: NSLocalizedString("Time since last use", comment: "elapsed timer title"),
-                                value: abstinenceTimerValue,
-                                isActive: hasLoggedEntries)
+                                value: viewModel.abstinenceTimerValue,
+                                isActive: viewModel.hasLoggedEntries)
 
             Divider()
                 .background(statCardBorderColor.opacity(0.6))
 
             abstinenceStatBlock(title: NSLocalizedString("Best nicotine-free streak", comment: "record timer title"),
-                                value: abstinenceRecordValue,
-                                isActive: bestRecordIsActive)
+                                value: viewModel.abstinenceRecordValue,
+                                isActive: viewModel.bestRecordIsActive)
 
-            if !hasLoggedEntries {
+            if !viewModel.hasLoggedEntries {
                 Text(NSLocalizedString("Start logging to enable the timer", comment: "timer empty state hint"))
                     .font(.footnote)
                     .foregroundStyle(primaryTextColor)
@@ -249,16 +239,16 @@ private extension MainDashboardView {
 
     var consumptionStatusBar: some View {
         VStack(spacing: 8) {
-            if shouldShowStreak {
+            if viewModel.shouldShowStreak {
                 let circleSize: CGFloat = 16
                 let spacing: CGFloat = 6
 
                 GeometryReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: spacing) {
-                            ForEach(0..<streakCircleCount, id: \.self) { index in
+                            ForEach(0..<viewModel.streakCircleCount, id: \.self) { index in
                                 Circle()
-                                    .fill(index < streakCirclesFilled ? Color.green.opacity(0.85) : primaryTextColor.opacity(0.22))
+                                    .fill(index < viewModel.streakCirclesFilled ? Color.green.opacity(0.85) : primaryTextColor.opacity(0.22))
                                     .frame(width: circleSize, height: circleSize)
                             }
                         }
@@ -268,7 +258,7 @@ private extension MainDashboardView {
                 }
                 .frame(height: circleSize)
 
-                Text(streakStatusText.uppercased())
+                Text(viewModel.streakStatusText.uppercased())
                     .font(.system(size: 12, weight: .semibold))
                     .tracking(1.1)
                     .foregroundStyle(primaryTextColor)
@@ -281,8 +271,8 @@ private extension MainDashboardView {
 
                         Capsule()
                             .fill(consumptionStatusColor)
-                            .frame(width: width * nextEntryProgress)
-                            .animation(.easeInOut(duration: 0.35), value: nextEntryProgress)
+                            .frame(width: width * viewModel.nextEntryProgress)
+                            .animation(.easeInOut(duration: 0.35), value: viewModel.nextEntryProgress)
                     }
                 }
                 .frame(height: 14)
@@ -364,15 +354,15 @@ private extension MainDashboardView {
     }
 
     var nextEntryLabel: String {
-        guard dailyLimit > 0 else {
+        guard viewModel.dailyLimit > 0 else {
             return NSLocalizedString("Next at: anytime", comment: "No limit fallback")
         }
 
-        guard let nextSuggestedDate else {
+        guard let nextSuggestedDate = viewModel.nextSuggestedDate else {
             return NSLocalizedString("Next at: now", comment: "No entries yet fallback")
         }
 
-        if nextSuggestedDate <= now {
+        if nextSuggestedDate <= viewModel.now {
             return NSLocalizedString("Next at: now", comment: "Ready now fallback")
         }
 
@@ -383,43 +373,22 @@ private extension MainDashboardView {
         )
     }
 
-    var remainingCount: Int {
-        max(dailyLimit - todayCount, 0)
-    }
-
-    var canConsumeNow: Bool {
-        guard dailyLimit > 0 else { return true }
-        if remainingCount == 0 { return false }
-        guard let nextSuggestedDate else { return true }
-        return nextSuggestedDate <= now
-    }
-
-    var nextEntryProgress: Double {
-        if canConsumeNow { return 1 }
-        guard dailyLimit > 0 else { return 1 }
-        guard let lastEntryDate, let nextSuggestedDate else { return 0 }
-        let interval = max(24 * 60 * 60 / Double(max(dailyLimit, 1)), 1)
-        let elapsed = max(now.timeIntervalSince(lastEntryDate), 0)
-        if nextSuggestedDate <= now { return 1 }
-        return min(max(elapsed / interval, 0), 1)
-    }
-
     var consumptionStatusColor: Color {
-        canConsumeNow ? Color.green.opacity(0.85) : Color.red.opacity(0.85)
+        viewModel.canConsumeNow ? Color.green.opacity(0.85) : Color.red.opacity(0.85)
     }
 
     var consumptionStatusText: String {
-        if canConsumeNow {
+        if viewModel.canConsumeNow {
             return NSLocalizedString("Allowed now", comment: "Status label when can consume")
         }
         return NSLocalizedString("Not yet", comment: "Status label when cannot consume yet")
     }
 
     var consumptionStatusAccessibilityLabel: String {
-        if shouldShowStreak {
-            return streakAccessibilityLabel
+        if viewModel.shouldShowStreak {
+            return viewModel.streakAccessibilityLabel
         }
-        if canConsumeNow {
+        if viewModel.canConsumeNow {
             return NSLocalizedString("You can consume now", comment: "Accessibility status when can consume")
         }
         return String.localizedStringWithFormat(
@@ -428,113 +397,12 @@ private extension MainDashboardView {
         )
     }
 
-    var shouldShowStreak: Bool {
-        canConsumeNow && (currentAbstinenceInterval ?? 0) >= 3600
-    }
-
-    var abstinenceHours: Int {
-        Int(floor((currentAbstinenceInterval ?? 0) / 3600))
-    }
-
-    var streakMilestones: [Int] {
-        [6, 9, 12, 15, 18, 24, 30, 36, 42, 48, 60, 72, 84, 96, 108, 180, 192, 200]
-    }
-
-    var streakHoursTarget: Int {
-        let hours = max(abstinenceHours, 1)
-        return streakMilestones.first(where: { $0 >= hours }) ?? (streakMilestones.last ?? 6)
-    }
-
-    var maxStreakCircles: Int {
-        12
-    }
-
-    var streakUnitHours: Int {
-        let candidates = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]
-        let target = max(streakHoursTarget, 1)
-        return candidates.first(where: { Int(ceil(Double(target) / Double($0))) <= maxStreakCircles }) ?? 30
-    }
-
-    var streakDisplayTarget: Int {
-        let target = max(streakHoursTarget, 1)
-        let unit = max(streakUnitHours, 1)
-        return Int(ceil(Double(target) / Double(unit))) * unit
-    }
-
-    var streakHoursFilled: Int {
-        min(max(abstinenceHours, 0), streakDisplayTarget)
-    }
-
-    var streakCircleCount: Int {
-        Int(ceil(Double(streakDisplayTarget) / Double(streakUnitHours)))
-    }
-
-    var streakCirclesFilled: Int {
-        let filled = max(streakHoursFilled, 0)
-        let fullUnits = filled / streakUnitHours
-        let hasPartial = filled % streakUnitHours != 0
-        return min(fullUnits + (hasPartial ? 1 : 0), streakCircleCount)
-    }
-
-    func streakCircleLabel(for index: Int) -> Int {
-        streakUnitHours
-    }
-
-    var streakStatusText: String {
-        String.localizedStringWithFormat(
-            NSLocalizedString("Streak %1$d/%2$d hours", comment: "Streak status label"),
-            streakHoursFilled,
-            streakDisplayTarget
-        )
-    }
-
-    var streakAccessibilityLabel: String {
-        String.localizedStringWithFormat(
-            NSLocalizedString("Streak progress %1$d of %2$d hours", comment: "Streak accessibility label"),
-            streakHoursFilled,
-            streakDisplayTarget
-        )
-    }
-
-
-    var entryTypeLabel: String {
-        switch entryType {
-        case .cig: return NSLocalizedString("CIGARETTES", comment: "cigarettes label")
-        case .puff: return NSLocalizedString("PUFFS", comment: "puffs label")
-        }
-    }
-
-    var nicotineMethodLabel: String {
-        guard let method = currentMethod else { return entryTypeLabel }
-        if method == .disposableVape || method == .refillableVape {
-            return "осталось затяжек".uppercased()
-        }
-        let key: String
-        switch method {
-        case .cigarettes:
-            key = "onboarding_method_cigarettes"
-        case .hookah:
-            key = "onboarding_method_hookah"
-        case .heatedTobacco:
-            key = "onboarding_method_heated_tobacco"
-        case .snusOrPouches:
-            key = "onboarding_method_snus_or_pouches"
-        case .disposableVape, .refillableVape:
-            key = "onboarding_method_disposable_vape"
-        }
-        return NSLocalizedString(key, comment: "nicotine method label").uppercased()
-    }
-
-    func refreshCurrentMethod() {
-        currentMethod = InMemorySettingsStore().loadProfile()?.method
-    }
-
     var trialStatusText: String {
         guard let createdAt = user.createdAt else {
             return NSLocalizedString("TRIAL ENDS SOON", comment: "Trial fallback")
         }
         let trialDurationHours: Double = 72
-        let elapsedSeconds = max(now.timeIntervalSince(createdAt), 0)
+        let elapsedSeconds = max(viewModel.now.timeIntervalSince(createdAt), 0)
         let elapsedHours = elapsedSeconds / 3600
         let remaining = max(Int(trialDurationHours - floor(elapsedHours)), 0)
         if remaining == 0 {
@@ -544,68 +412,17 @@ private extension MainDashboardView {
     }
 
     var weekDays: [WeekDay] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: now)
-
-        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today)) else {
-            return []
-        }
-
-        return (0..<7).compactMap { offset -> WeekDay? in
-            guard let date = calendar.date(byAdding: .day, value: offset, to: weekStart) else { return nil }
-            let number = calendar.component(.day, from: date)
-            let isToday = calendar.isDate(date, inSameDayAs: today)
-            let label = Self.weekdayFormatter.string(from: date)
-            let key = calendar.startOfDay(for: date)
-            let count = weekEntryCounts[key] ?? 0
-            return WeekDay(date: date,
-                           displayNumber: "\(number)",
-                           displayLabel: isToday ? NSLocalizedString("Today", comment: "today label") : label,
-                           isToday: isToday,
-                           count: count,
-                           limit: dailyLimit)
-        }
+        viewModel.weekDays
     }
 }
 
 // MARK: - Abstinence Helpers
 
 private extension MainDashboardView {
-    var hasLoggedEntries: Bool {
-        lastEntryDate != nil || bestAbstinenceInterval > 0
-    }
-
-    var bestRecordIsActive: Bool {
-        bestAbstinenceInterval > 0 || (currentAbstinenceInterval ?? 0) > 0
-    }
-
-    var currentAbstinenceInterval: TimeInterval? {
-        guard let lastEntryDate else { return nil }
-        return max(now.timeIntervalSince(lastEntryDate), 0)
-    }
-
-    var abstinenceTimerValue: String {
-        guard let interval = currentAbstinenceInterval else {
-            return "--"
-        }
-        return formattedDuration(interval)
-    }
-
-    var abstinenceRecordValue: String {
-        let record = max(bestAbstinenceInterval, currentAbstinenceInterval ?? 0)
-        guard record > 0 else {
-            return NSLocalizedString("No record yet", comment: "record placeholder")
-        }
-        return formattedDuration(record)
-    }
-
-    func formattedDuration(_ interval: TimeInterval) -> String {
-        let safeInterval = max(interval, 1)
-        if safeInterval < 60 {
-            return NSLocalizedString("<1m", comment: "duration shorter than a minute")
-        }
-        return Self.abstinenceFormatter.string(from: safeInterval) ?? "--"
-    }
+    var hasLoggedEntries: Bool { viewModel.hasLoggedEntries }
+    var bestRecordIsActive: Bool { viewModel.bestRecordIsActive }
+    var abstinenceTimerValue: String { viewModel.abstinenceTimerValue }
+    var abstinenceRecordValue: String { viewModel.abstinenceRecordValue }
 }
 
 // MARK: - Week Strip Helpers
@@ -677,7 +494,7 @@ private extension MainDashboardView {
                     holdProgress = min(holdProgress + step, 1)
                 }
                 if holdProgress >= 1 {
-                    stopHoldTimer()
+                    completeHold()
                 }
             }
     }
@@ -700,6 +517,7 @@ private extension MainDashboardView {
     }
 
     func completeHold() {
+        guard !holdCompleted else { return }
         holdCompleted = true
         stopHoldTimer()
         isHolding = false
@@ -764,9 +582,9 @@ private extension MainDashboardView {
     func performHoldAction() {
         let actionSucceeded: Bool
         if isCurrentHoldDecrement {
-            actionSucceeded = removeEntry()
+            actionSucceeded = viewModel.removeEntry()
         } else {
-            actionSucceeded = logEntry()
+            actionSucceeded = viewModel.logEntry()
         }
         if actionSucceeded {
             triggerHoldSuccessHaptic()
@@ -779,121 +597,10 @@ private extension MainDashboardView {
     }
 }
 
-// MARK: - Actions
-
-private extension MainDashboardView {
-    @discardableResult
-    func removeEntry() -> Bool {
-        let tracker = TrackingService(context: context)
-        let removed = tracker.removeLatestEntry(for: user, type: entryType, referenceDate: Date())
-        if removed {
-            refreshToday(reference: Date())
-        }
-        return removed
-    }
-
-    @discardableResult
-    func logEntry() -> Bool {
-        let tracker = TrackingService(context: context)
-        tracker.addEntry(for: user, type: entryType)
-        refreshToday(reference: Date())
-        return true
-    }
-
-    func refreshToday(reference: Date) {
-        let stats = StatsService(context: context)
-        todayCount = stats.countForDay(user: user, date: reference, type: entryType)
-        weekEntryCounts = fetchWeekCounts(stats: stats, anchor: reference)
-        let abstinenceStats = fetchAbstinenceStats(reference: reference)
-        lastEntryDate = abstinenceStats.lastEntry
-        bestAbstinenceInterval = abstinenceStats.longestInterval
-        nextSuggestedDate = calculateNextSuggestedDate(lastEntryDate: abstinenceStats.lastEntry)
-    }
-
-    func calculateNextSuggestedDate(lastEntryDate: Date?) -> Date? {
-        guard dailyLimit > 0 else { return nil }
-        guard let lastEntryDate else { return nil }
-        let interval = 24 * 60 * 60 / Double(max(dailyLimit, 1))
-        return lastEntryDate.addingTimeInterval(interval)
-    }
-
-    func fetchWeekCounts(stats: StatsService, anchor: Date) -> [Date: Int] {
-        let calendar = Calendar.current
-        let dayAnchor = calendar.startOfDay(for: anchor)
-        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: dayAnchor)) else {
-            return [:]
-        }
-
-        var result: [Date: Int] = [:]
-        for offset in 0..<7 {
-            guard let date = calendar.date(byAdding: .day, value: offset, to: weekStart) else { continue }
-            let count = stats.countForDay(user: user, date: date, type: entryType)
-            result[calendar.startOfDay(for: date)] = count
-        }
-        return result
-    }
-
-    func fetchAbstinenceStats(reference: Date) -> AbstinenceStats {
-        let request: NSFetchRequest<Entry> = Entry.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \Entry.createdAt, ascending: true)]
-        request.predicate = NSPredicate(format: "user == %@ AND type == %d",
-                                        user, entryType.rawValue)
-
-        guard let entries = try? context.fetch(request) else {
-            return AbstinenceStats(lastEntry: nil, longestInterval: 0)
-        }
-
-        let dates = entries.compactMap { $0.createdAt }.sorted()
-        guard !dates.isEmpty else {
-            return AbstinenceStats(lastEntry: nil, longestInterval: 0)
-        }
-
-        var longest: TimeInterval = 0
-        var previousDate = dates.first
-
-        for date in dates.dropFirst() {
-            if let previousDate {
-                let gap = max(date.timeIntervalSince(previousDate), 0)
-                longest = max(longest, gap)
-            }
-            previousDate = date
-        }
-
-        if let last = dates.last {
-            let gap = max(reference.timeIntervalSince(last), 0)
-            longest = max(longest, gap)
-        }
-
-        return AbstinenceStats(lastEntry: dates.last, longestInterval: max(longest, 0))
-    }
-}
-
-// MARK: - Models
-
-private struct WeekDay: Identifiable {
-    let date: Date
-    let displayNumber: String
-    let displayLabel: String
-    let isToday: Bool
-    let count: Int
-    let limit: Int
-
-    var id: Date { date }
-
-    var progress: Double {
-        guard limit > 0 else { return 0 }
-        return Double(count) / Double(limit)
-    }
-}
-
-private struct AbstinenceStats {
-    let lastEntry: Date?
-    let longestInterval: TimeInterval
-}
-
 #Preview {
     if let user = try? PersistenceController.preview.container.viewContext.fetch(User.fetchRequest()).first {
-        MainDashboardView(user: user)
+        MainDashboardView(user: user, environment: AppEnvironment.preview)
+            .environment(\.appEnvironment, AppEnvironment.preview)
             .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
     }
 }

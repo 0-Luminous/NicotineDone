@@ -2,22 +2,23 @@ import CoreData
 
 final class TrackingService {
     private let context: NSManagedObjectContext
+    private let entryRepository: EntryRepository
     private let statsService: StatsService
     private let gamification: GamificationService
 
-    init(context: NSManagedObjectContext) {
+    init(context: NSManagedObjectContext,
+         entryRepository: EntryRepository,
+         statsService: StatsService,
+         gamification: GamificationService) {
         self.context = context
-        self.statsService = StatsService(context: context)
-        self.gamification = GamificationService(context: context)
+        self.entryRepository = entryRepository
+        self.statsService = statsService
+        self.gamification = gamification
     }
 
     func addEntry(for user: User, type: EntryType, cost: Double? = nil, date: Date = Date()) {
-        let entry = Entry(context: context)
-        entry.id = UUID()
-        entry.createdAt = date
-        entry.type = type.rawValue
-        entry.cost = resolvedCost(for: user, explicitCost: cost, type: type)
-        entry.user = user
+        let resolved = resolvedCost(for: user, explicitCost: cost, type: type)
+        _ = entryRepository.addEntry(user: user, type: type, cost: resolved, date: date)
 
         statsService.bumpDailyCount(for: user, at: date, type: type)
         gamification.onEntryAdded(user: user, at: date)
@@ -29,16 +30,13 @@ final class TrackingService {
         let startOfDay = statsService.startOfDay(for: referenceDate)
         let endOfDay = statsService.endOfDay(for: referenceDate)
 
-        let request: NSFetchRequest<Entry> = Entry.fetchRequest()
-        request.fetchLimit = 1
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \Entry.createdAt, ascending: false)]
-        request.predicate = NSPredicate(format: "user == %@ AND type == %d AND createdAt >= %@ AND createdAt < %@",
-                                        user, type.rawValue, startOfDay as NSDate, endOfDay as NSDate)
-
-        guard let entry = try? context.fetch(request).first else { return false }
+        guard let entry = entryRepository.fetchLatestEntry(user: user,
+                                                           type: type,
+                                                           start: startOfDay,
+                                                           end: endOfDay) else { return false }
 
         let removalDate = entry.createdAt ?? referenceDate
-        context.delete(entry)
+        entryRepository.deleteEntry(entry)
         statsService.decrementDailyCount(for: user, at: removalDate, type: type)
         context.saveIfNeeded()
         return true

@@ -221,7 +221,8 @@ struct CalendarScreen: View {
     }
 
     private func count(for date: Date) -> Int {
-        let service = StatsService(context: context)
+        let service = StatsService(statsRepository: CoreDataStatsRepository(context: context),
+                                   entryRepository: CoreDataEntryRepository(context: context))
         return service.countForDayAllTypes(user: user, date: date)
     }
 
@@ -776,7 +777,8 @@ private struct DailyDetailSheet: View {
     }
 
     private func refreshTrendData() {
-        let stats = StatsService(context: context)
+        let stats = StatsService(statsRepository: CoreDataStatsRepository(context: context),
+                                 entryRepository: CoreDataEntryRepository(context: context))
         let entryType = user.product.entryType
         let dayTotals = stats.totalsForHoursInDay(user: user, date: date, type: entryType)
         let dayCount = stats.countForDay(user: user, date: date, type: entryType)
@@ -878,6 +880,7 @@ private struct DaySelection: Identifiable {
     if let user = try? PersistenceController.preview.container.viewContext.fetch(User.fetchRequest()).first {
         CalendarScreen(user: user)
             .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-            .environmentObject(AppViewModel(context: PersistenceController.preview.container.viewContext))
+            .environment(\.appEnvironment, AppEnvironment.preview)
+            .environmentObject(AppViewModel(environment: AppEnvironment.preview))
     }
 }

@@ -4,11 +4,15 @@ import CoreData
 final class GamificationService {
     private let context: NSManagedObjectContext
     private let stats: StatsService
+    private let achievementRepository: AchievementRepository
     private lazy var calendar = Calendar.current
 
-    init(context: NSManagedObjectContext) {
+    init(context: NSManagedObjectContext,
+         stats: StatsService,
+         achievementRepository: AchievementRepository) {
         self.context = context
-        self.stats = StatsService(context: context)
+        self.stats = stats
+        self.achievementRepository = achievementRepository
     }
 
     static func level(forXP xp: Int64) -> Int {
@@ -78,14 +82,8 @@ final class GamificationService {
     private func updateAchievements(for user: User, date: Date) {
         achievementCatalog.forEach { definition in
             let achievement = createIfNeeded(definition: definition)
-            let userAchievement = fetchUserAchievement(user: user, achievement: achievement) ?? {
-                let ua = UserAchievement(context: context)
-                ua.id = UUID()
-                ua.user = user
-                ua.achievement = achievement
-                ua.progress = 0
-                return ua
-            }()
+            let userAchievement = achievementRepository.fetchUserAchievement(user: user, achievement: achievement)
+                ?? achievementRepository.createUserAchievement(user: user, achievement: achievement)
 
             let newProgress: Int64
             switch definition.kind {
@@ -107,39 +105,21 @@ final class GamificationService {
     }
 
     private func createIfNeeded(definition: AchievementDefinition) -> Achievement {
-        if let existing = fetchAchievement(code: definition.code) {
+        if let existing = achievementRepository.fetchAchievement(code: definition.code) {
             return existing
         }
-        let achievement = Achievement(context: context)
-        achievement.id = UUID()
-        achievement.code = definition.code
-        achievement.title = NSLocalizedString(definition.title, comment: "achievement title")
-        achievement.descText = NSLocalizedString(definition.description, comment: "achievement description")
-        achievement.icon = definition.icon
-        achievement.threshold = definition.threshold
-        achievement.kind = definition.kind.rawValue
-        return achievement
-    }
-
-    private func fetchAchievement(code: String) -> Achievement? {
-        let req: NSFetchRequest<Achievement> = Achievement.fetchRequest()
-        req.fetchLimit = 1
-        req.predicate = NSPredicate(format: "code == %@", code)
-        return try? context.fetch(req).first
-    }
-
-    private func fetchUserAchievement(user: User, achievement: Achievement) -> UserAchievement? {
-        let req: NSFetchRequest<UserAchievement> = UserAchievement.fetchRequest()
-        req.fetchLimit = 1
-        req.predicate = NSPredicate(format: "user == %@ AND achievement == %@", user, achievement)
-        return try? context.fetch(req).first
+        return achievementRepository.createAchievement(code: definition.code,
+                                                       title: NSLocalizedString(definition.title, comment: "achievement title"),
+                                                       description: NSLocalizedString(definition.description, comment: "achievement description"),
+                                                       icon: definition.icon,
+                                                       threshold: definition.threshold,
+                                                       kind: definition.kind)
     }
 
     private func progressForDaysWithinLimit(user: User) -> Int64 {
         let type = user.product.entryType
         let streak = ensureStreak(for: user)
         let withinLimitDays = streak.currentLength
-        let stats = StatsService(context: context)
         let totals = stats.totalsForLastDays(user: user, days: 30, type: type)
         let goodDays = totals.filter { $0.value <= Int(user.dailyLimit) }.count
         return max(Int64(withinLimitDays), Int64(goodDays))

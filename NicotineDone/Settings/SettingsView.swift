@@ -1,31 +1,32 @@
-import CoreData
 import SwiftUI
+import CoreData
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.managedObjectContext) private var context
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var appViewModel: AppViewModel
     @ObservedObject var user: User
+    @StateObject private var viewModel: SettingsViewModel
+    private let environment: AppEnvironment
 
     @AppStorage("dashboardBackgroundIndex") private var legacyBackgroundIndex: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexLight") private var backgroundIndexLight: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
-    @State private var selectedMethod: NicotineMethod = .cigarettes
-    @State private var latestProfile: NicotineProfile?
-    @State private var dailyLimit: Double = 10
     @State private var showMethodPicker = false
     @State private var appearancePickerMode: ColorScheme? = nil
-    @State private var storedProfiles: [NicotineProfile] = []
     @AppStorage("appPreferredColorScheme") private var appPreferredColorSchemeRaw: Int = 0
     @State private var editingProfile: NicotineProfile?
 
     @State private var showMethodManager = false
-    private let savedMethodsStore = SavedMethodsStore()
-    private let onboardingStore = InMemorySettingsStore()
     private var backgroundStyle: DashboardBackgroundStyle {
         style(for: colorScheme)
+    }
+
+    init(user: User, environment: AppEnvironment) {
+        self.user = user
+        self.environment = environment
+        _viewModel = StateObject(wrappedValue: SettingsViewModel(user: user, environment: environment))
     }
 
     private var cardStrokeColor: Color {
@@ -65,23 +66,23 @@ struct SettingsView: View {
             }
         }
         .onAppear {
-            synchronizeForm()
+            viewModel.synchronizeForm()
             ensureAppearanceMigration()
         }
         .fullScreenCover(isPresented: $showMethodPicker) {
-            SettingsMethodPickerView(selectedMethod: selectedMethod,
+            SettingsMethodPickerView(selectedMethod: viewModel.selectedMethod,
                                      editingProfile: editingProfile) { profile in
-                applyProfileSelection(profile)
+                viewModel.applyProfileSelection(profile)
                 editingProfile = nil
             }
         }
         .fullScreenCover(isPresented: $showMethodManager) {
             SettingsMethodSelectionView(
                 backgroundStyle: backgroundStyle,
-                profiles: storedProfiles,
-                selectedMethod: selectedMethod,
+                profiles: viewModel.storedProfiles,
+                selectedMethod: viewModel.selectedMethod,
                 onSelect: { profile in
-                    applyProfileSelection(profile)
+                    viewModel.applyProfileSelection(profile)
                     showMethodManager = false
                 },
                 onAdd: {
@@ -95,33 +96,14 @@ struct SettingsView: View {
                     showMethodPicker = true
                 },
                 onDelete: { profile in
-                    deleteProfile(profile)
+                    viewModel.deleteProfile(profile)
                 }
             )
         }
     }
 
-    private func synchronizeForm() {
-        refreshStoredProfiles()
-        if let profile = storedProfiles.first {
-            selectedMethod = profile.method
-        } else {
-            selectedMethod = nicotineMethod(for: ProductType(rawValue: user.productType) ?? .cigarette)
-        }
-        dailyLimit = Double(user.dailyLimit)
-    }
-
     private func save() {
-        user.productType = productType(for: selectedMethod).rawValue
-        user.dailyLimit = Int32(dailyLimit)
-
-        if let profile = latestProfile {
-            user.packSize = Int16(clamping: packSize(for: profile))
-            user.packCost = packCost(for: profile)
-            user.currencyCode = profile.selectedCurrency.code
-        }
-
-        context.saveIfNeeded()
+        viewModel.save()
         dismiss()
     }
 }
@@ -160,12 +142,12 @@ private extension SettingsView {
             VStack(alignment: .leading, spacing: 16) {
                 methodSelectionCard
 
-                Stepper(value: $dailyLimit, in: 1...60, step: 1) {
+                Stepper(value: $viewModel.dailyLimit, in: 1...60, step: 1) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Daily limit")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text("\(Int(dailyLimit)) per day")
+                        Text("\(Int(viewModel.dailyLimit)) per day")
                             .font(.body.weight(.semibold))
                     }
                 }
@@ -183,7 +165,7 @@ private extension SettingsView {
 
     var achievementsButton: some View {
         NavigationLink {
-            AchievementsScreen(user: user)
+            AchievementsScreen(user: user, environment: environment)
         } label: {
             HStack(spacing: 16) {
                 ZStack {
@@ -311,7 +293,7 @@ private extension SettingsView {
         Button {
             showMethodManager = true
         } label: {
-            SettingsMethodCardView(method: selectedMethod,
+            SettingsMethodCardView(method: viewModel.selectedMethod,
                                    backgroundStyle: backgroundStyle)
         }
         .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 8)
@@ -331,125 +313,14 @@ private extension SettingsView {
         .glassEffect(.clear, in: .rect(cornerRadius: 24))
     }
 
-    func nicotineMethod(for product: ProductType) -> NicotineMethod {
-        switch product {
-        case .cigarette:
-            return .cigarettes
-        case .vape:
-            return .refillableVape
-        }
-    }
-
-    func productType(for method: NicotineMethod) -> ProductType {
-        switch method {
-        case .cigarettes, .hookah, .heatedTobacco, .snusOrPouches:
-            return .cigarette
-        case .disposableVape, .refillableVape:
-            return .vape
-        }
-    }
-
-    func dailyLimit(for profile: NicotineProfile) -> Int {
-        switch profile.method {
-        case .cigarettes:
-            return profile.cigarettes?.cigarettesPerDay ?? 10
-        case .hookah:
-            let sessionsPerWeek = profile.cigarettes?.cigarettesPerDay ?? 3
-            let perDay = Double(sessionsPerWeek) / 7.0
-            return max(1, Int(ceil(perDay)))
-        case .disposableVape:
-            guard let config = profile.disposableVape else { return 150 }
-            let computed = max(80, config.puffsPerDevice / 5)
-            return min(computed, config.puffsPerDevice)
-        case .refillableVape:
-            guard let config = profile.refillableVape else { return 200 }
-            return max(100, config.estimatedPuffsPerMl * 5)
-        case .heatedTobacco:
-            return profile.heatedTobacco?.dailySticks ?? 15
-        case .snusOrPouches:
-            return profile.snus?.dailyPouches ?? 10
-        }
-    }
-
-    func packSize(for profile: NicotineProfile) -> Int {
-        switch profile.method {
-        case .cigarettes:
-            return profile.cigarettes?.cigarettesPerPack ?? 20
-        case .hookah:
-            return 1
-        case .disposableVape:
-            return profile.disposableVape?.puffsPerDevice ?? 600
-        case .refillableVape:
-            return profile.refillableVape?.liquidBottleMl ?? 30
-        case .heatedTobacco:
-            return profile.heatedTobacco?.sticksPerPack ?? 20
-        case .snusOrPouches:
-            return profile.snus?.pouchesPerCan ?? 20
-        }
-    }
-
-    func packCost(for profile: NicotineProfile) -> Double {
-        switch profile.method {
-        case .cigarettes:
-            guard let price = profile.cigarettes?.packPrice else { return 0 }
-            return NSDecimalNumber(decimal: price).doubleValue
-        case .hookah:
-            guard let config = profile.cigarettes else { return 0 }
-            let total = config.packPrice * config.hookahPacksPerSession
-            return NSDecimalNumber(decimal: total).doubleValue
-        case .disposableVape:
-            guard let price = profile.disposableVape?.devicePrice else { return 0 }
-            return NSDecimalNumber(decimal: price).doubleValue
-        case .refillableVape:
-            guard let config = profile.refillableVape else { return 0 }
-            let total = config.liquidPrice + (config.coilPrice ?? 0)
-            return NSDecimalNumber(decimal: total).doubleValue
-        case .heatedTobacco:
-            guard let price = profile.heatedTobacco?.packPrice else { return 0 }
-            return NSDecimalNumber(decimal: price).doubleValue
-        case .snusOrPouches:
-            guard let price = profile.snus?.canPrice else { return 0 }
-            return NSDecimalNumber(decimal: price).doubleValue
-        }
-    }
-
-    private func refreshStoredProfiles() {
-        let latestOnboardingProfile = onboardingStore.loadProfile()
-        storedProfiles = savedMethodsStore.mergeLatestOnboardingProfile(latestOnboardingProfile)
-    }
-
-    private func applyProfileSelection(_ profile: NicotineProfile, persist: Bool = true) {
-        latestProfile = profile
-        selectedMethod = profile.method
-        dailyLimit = Double(dailyLimit(for: profile))
-        if persist {
-            savedMethodsStore.save(profile: profile)
-        }
-        try? onboardingStore.save(profile: profile)
-        refreshStoredProfiles()
-    }
-
-    private func deleteProfile(_ profile: NicotineProfile) {
-        savedMethodsStore.delete(method: profile.method)
-        refreshStoredProfiles()
-        if selectedMethod == profile.method {
-            if let fallback = storedProfiles.first {
-                // Apply without re-saving since store already updated.
-                applyProfileSelection(fallback, persist: false)
-            } else {
-                selectedMethod = nicotineMethod(for: ProductType(rawValue: user.productType) ?? .cigarette)
-                dailyLimit = Double(user.dailyLimit)
-                latestProfile = nil
-            }
-        }
-    }
 
 }
 
 #Preview {
     if let user = try? PersistenceController.preview.container.viewContext.fetch(User.fetchRequest()).first {
-        SettingsView(user: user)
+        SettingsView(user: user, environment: AppEnvironment.preview)
             .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-            .environmentObject(AppViewModel(context: PersistenceController.preview.container.viewContext))
+            .environment(\.appEnvironment, AppEnvironment.preview)
+            .environmentObject(AppViewModel(environment: AppEnvironment.preview))
     }
 }

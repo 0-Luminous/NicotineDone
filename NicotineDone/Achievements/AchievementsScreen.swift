@@ -2,19 +2,21 @@ import SwiftUI
 import CoreData
 
 struct AchievementsScreen: View {
-    @Environment(\.managedObjectContext) private var context
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var user: User
+    @StateObject private var viewModel: AchievementsViewModel
 
     @AppStorage("dashboardBackgroundIndex") private var legacyBackgroundIndex: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexLight") private var backgroundIndexLight: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
     @State private var selectedAchievement: AchievementItem?
-    @State private var achievementState = AchievementState()
     @State private var isStreakStackExpanded = false
 
-    private let achievements: [AchievementItem] = AchievementItem.catalog
+    init(user: User, environment: AppEnvironment) {
+        self.user = user
+        _viewModel = StateObject(wrappedValue: AchievementsViewModel(user: user, environment: environment))
+    }
 
     var body: some View {
         ZStack {
@@ -26,7 +28,7 @@ struct AchievementsScreen: View {
                     header
 
                     ForEach(nonStreakAchievements) { achievement in
-                        let isAchieved = achievement.isAchieved(using: achievementState)
+                        let isAchieved = achievement.isAchieved(using: viewModel.achievementState)
                         AchievementCard(item: achievement,
                                         primaryTextColor: primaryTextColor,
                                         isAchieved: isAchieved,
@@ -44,7 +46,7 @@ struct AchievementsScreen: View {
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
             ensureAppearanceMigration()
-            refreshAchievementState()
+            viewModel.refresh()
         }
         .sheet(item: $selectedAchievement) { achievement in
             AchievementPreviewSheet(item: achievement,
@@ -75,9 +77,9 @@ private extension AchievementsScreen {
     }
 
     var sortedAchievements: [AchievementItem] {
-        achievements.sorted {
-            let left = $0.isAchieved(using: achievementState)
-            let right = $1.isAchieved(using: achievementState)
+        viewModel.achievements.sorted {
+            let left = $0.isAchieved(using: viewModel.achievementState)
+            let right = $1.isAchieved(using: viewModel.achievementState)
             if left != right {
                 return left && !right
             }
@@ -90,9 +92,9 @@ private extension AchievementsScreen {
     }
 
     var streakAchievements: [AchievementItem] {
-        achievements.filter { $0.isStreakRelated }.sorted {
-            let left = $0.isAchieved(using: achievementState)
-            let right = $1.isAchieved(using: achievementState)
+        viewModel.achievements.filter { $0.isStreakRelated }.sorted {
+            let left = $0.isAchieved(using: viewModel.achievementState)
+            let right = $1.isAchieved(using: viewModel.achievementState)
             if left != right {
                 return left && !right
             }
@@ -134,7 +136,7 @@ private extension AchievementsScreen {
             if isStreakStackExpanded {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(streakAchievements) { achievement in
-                        let isAchieved = achievement.isAchieved(using: achievementState)
+                        let isAchieved = achievement.isAchieved(using: viewModel.achievementState)
                         AchievementCard(item: achievement,
                                         primaryTextColor: primaryTextColor,
                                         isAchieved: isAchieved,
@@ -147,7 +149,7 @@ private extension AchievementsScreen {
     }
 
     var streakProgressText: String {
-        let achieved = streakAchievements.filter { $0.isAchieved(using: achievementState) }.count
+        let achieved = streakAchievements.filter { $0.isAchieved(using: viewModel.achievementState) }.count
         return "Выполнено \(achieved) из \(streakAchievements.count)"
     }
 
@@ -158,111 +160,6 @@ private extension AchievementsScreen {
         appearanceStylesMigrated = true
     }
 
-    func refreshAchievementState() {
-        achievementState = AchievementStateBuilder(context: context, user: user).build()
-        unlockRewardThemes()
-    }
-
-    func unlockRewardThemes() {
-        let themes: [DashboardBackgroundStyle] = achievements.compactMap { item in
-            item.isAchieved(using: achievementState) ? item.rewardTheme : nil
-        }
-        ThemeUnlockStore.setUnlocked(themes)
-    }
-}
-
-private struct AchievementState {
-    var bestAbstinenceInterval: TimeInterval = 0
-    var cleanMorningCount: Int = 0
-    var cleanEveningCount: Int = 0
-    var bestEntryStreak: Int = 0
-    var withinLimitBestStreak: Int = 0
-}
-
-private struct AchievementStateBuilder {
-    let context: NSManagedObjectContext
-    let user: User
-    private let calendar = Calendar.current
-
-    func build() -> AchievementState {
-        var state = AchievementState()
-        state.withinLimitBestStreak = Int(user.streak?.bestLength ?? 0)
-
-        let entryType = user.product.entryType
-        let request: NSFetchRequest<Entry> = Entry.fetchRequest()
-        request.predicate = NSPredicate(format: "user == %@ AND type == %d", user, entryType.rawValue)
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \Entry.createdAt, ascending: true)]
-
-        let entries = (try? context.fetch(request)) ?? []
-        let dates = entries.compactMap(\.createdAt)
-
-        state.bestAbstinenceInterval = bestAbstinenceInterval(from: dates)
-
-        let dayBuckets = bucketByDay(dates)
-        state.cleanMorningCount = countCleanMornings(from: dayBuckets)
-        state.cleanEveningCount = countCleanEvenings(from: dayBuckets)
-        state.bestEntryStreak = bestEntryStreak(from: dayBuckets)
-
-        return state
-    }
-
-    private func bestAbstinenceInterval(from dates: [Date]) -> TimeInterval {
-        guard !dates.isEmpty else { return 0 }
-        var best: TimeInterval = 0
-        var last: Date?
-        for date in dates {
-            if let last {
-                best = max(best, date.timeIntervalSince(last))
-            }
-            last = date
-        }
-        if let last {
-            best = max(best, Date().timeIntervalSince(last))
-        }
-        return max(best, 0)
-    }
-
-    private func bucketByDay(_ dates: [Date]) -> [Date: [Date]] {
-        var map: [Date: [Date]] = [:]
-        for date in dates {
-            let day = calendar.startOfDay(for: date)
-            map[day, default: []].append(date)
-        }
-        return map
-    }
-
-    private func countCleanMornings(from buckets: [Date: [Date]]) -> Int {
-        buckets.values.reduce(0) { total, dates in
-            let earliestHour = dates.map { calendar.component(.hour, from: $0) }.min() ?? 24
-            return total + (earliestHour >= 12 ? 1 : 0)
-        }
-    }
-
-    private func countCleanEvenings(from buckets: [Date: [Date]]) -> Int {
-        buckets.values.reduce(0) { total, dates in
-            let latestHour = dates.map { calendar.component(.hour, from: $0) }.max() ?? -1
-            return total + (latestHour < 20 ? 1 : 0)
-        }
-    }
-
-    private func bestEntryStreak(from buckets: [Date: [Date]]) -> Int {
-        let sortedDays = buckets.keys.sorted()
-        guard !sortedDays.isEmpty else { return 0 }
-        var best = 1
-        var current = 1
-        var previous = sortedDays[0]
-        for day in sortedDays.dropFirst() {
-            let expected = calendar.date(byAdding: .day, value: 1, to: previous) ?? day
-            if calendar.isDate(day, inSameDayAs: expected) {
-                current += 1
-            } else {
-                current = 1
-            }
-            best = max(best, current)
-            previous = day
-        }
-        return best
-    }
 }
 
 enum AchievementRule {
@@ -458,7 +355,7 @@ struct AchievementItem: Identifiable {
     }
 }
 
-private extension AchievementItem {
+extension AchievementItem {
     func isAchieved(using state: AchievementState) -> Bool {
         switch rule {
         case .abstinenceHours(let hours):
@@ -666,7 +563,8 @@ private struct RibbonShape: Shape {
 
 #Preview {
     if let user = try? PersistenceController.preview.container.viewContext.fetch(User.fetchRequest()).first {
-        AchievementsScreen(user: user)
-            .environmentObject(AppViewModel(context: PersistenceController.preview.container.viewContext))
+        AchievementsScreen(user: user, environment: AppEnvironment.preview)
+            .environment(\.appEnvironment, AppEnvironment.preview)
+            .environmentObject(AppViewModel(environment: AppEnvironment.preview))
     }
 }

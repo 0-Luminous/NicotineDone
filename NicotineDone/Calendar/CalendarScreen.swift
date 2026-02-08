@@ -6,17 +6,18 @@ struct CalendarScreen: View {
     @Environment(\.managedObjectContext) private var context
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var user: User
+    @StateObject private var viewModel: CalendarScreenViewModel
     @AppStorage("dashboardBackgroundIndex") private var legacyBackgroundIndex: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexLight") private var backgroundIndexLight: Int = DashboardBackgroundStyle.default.rawValue
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
 
-    @State private var monthAnchor: Date = Calendar.current.startOfMonth(for: Date())
-    @State private var selectedDay: DaySelection?
-    @State private var isYearPickerPresented = false
-    @State private var pendingYearSelection: Int = Calendar.current.component(.year, from: Date())
+    init(user: User) {
+        self.user = user
+        _viewModel = StateObject(wrappedValue: CalendarScreenViewModel(user: user))
+    }
 
-    private var limit: Int { Int(user.dailyLimit) }
+    private var limit: Int { viewModel.limit }
     private var backgroundStyle: DashboardBackgroundStyle {
         style(for: colorScheme)
     }
@@ -49,7 +50,7 @@ struct CalendarScreen: View {
                 VStack(spacing: 16) {
                     if !monthsOfYear.isEmpty {
                         MonthSlider(months: monthsOfYear,
-                                    selection: $monthAnchor,
+                                    selection: $viewModel.monthAnchor,
                                     selectedColor: primaryTextColor,
                                     unselectedColor: secondaryTextColor)
                             .foregroundStyle(primaryTextColor)
@@ -65,16 +66,16 @@ struct CalendarScreen: View {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 7), spacing: 12) {
                         ForEach(Array(gridDays.enumerated()), id: \.offset) { _, day in
                             if let date = day {
-                                let dayCount = count(for: date)
-                                let isAvailable = isDayAvailable(date)
+                                let dayCount = viewModel.count(for: date, context: context)
+                                let isAvailable = viewModel.isDayAvailable(date)
                                 Button {
-                                    selectedDay = DaySelection(date: date)
+                                    viewModel.selectedDay = DaySelection(date: date)
                                 } label: {
                                     CalendarDayCell(date: date,
                                                     count: dayCount,
                                                     limit: limit,
                                                     isToday: Calendar.current.isDateInToday(date),
-                                                    isInCurrentMonth: Calendar.current.isDate(date, equalTo: monthAnchor, toGranularity: .month),
+                                                    isInCurrentMonth: Calendar.current.isDate(date, equalTo: viewModel.monthAnchor, toGranularity: .month),
                                                     labelColor: primaryTextColor,
                                                     isAvailable: isAvailable)
                                 }
@@ -102,8 +103,8 @@ struct CalendarScreen: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if !yearOptions.isEmpty {
                     Button {
-                        pendingYearSelection = yearOptions.contains(currentYear) ? currentYear : (yearOptions.last ?? currentYear)
-                        isYearPickerPresented = true
+                        viewModel.pendingYearSelection = yearOptions.contains(currentYear) ? currentYear : (yearOptions.last ?? currentYear)
+                        viewModel.isYearPickerPresented = true
                     } label: {
                         HStack(spacing: 6) {
                             Text(yearTitle)
@@ -120,16 +121,16 @@ struct CalendarScreen: View {
                 }
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.9), value: monthAnchor)
-        .sheet(item: $selectedDay) { selection in
+        .animation(.spring(response: 0.35, dampingFraction: 0.9), value: viewModel.monthAnchor)
+        .sheet(item: $viewModel.selectedDay) { selection in
             DailyDetailSheet(user: user, date: selection.date)
                 .presentationBackground(.ultraThinMaterial)
                 .presentationCornerRadius(36)
         }
-        .sheet(isPresented: $isYearPickerPresented) {
+        .sheet(isPresented: $viewModel.isYearPickerPresented) {
             NavigationStack {
                 VStack {
-                    Picker("Year", selection: $pendingYearSelection) {
+                    Picker("Year", selection: $viewModel.pendingYearSelection) {
                         ForEach(yearOptions, id: \.self) { year in
                             Text(String(year)) // Avoid locale-based digit grouping like 2.025
                                 .tag(year)
@@ -145,12 +146,14 @@ struct CalendarScreen: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") {
-                            isYearPickerPresented = false
+                            viewModel.isYearPickerPresented = false
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") {
-                            applySelectedYear()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                                viewModel.applySelectedYear(context: context)
+                            }
                         }
                     }
                 }
@@ -158,173 +161,28 @@ struct CalendarScreen: View {
             .presentationDetents([.fraction(0.35)])
         }
         .onAppear {
-            alignMonthAnchorToAvailableData()
+            viewModel.alignMonthAnchorToAvailableData(context: context)
         }
-    }
-
-    private var gridDays: [Date?] {
-        let calendar = Calendar.current
-        let range = calendar.range(of: .day, in: .month, for: monthAnchor) ?? 1..<32
-
-        // All days in the current month
-        let monthDays: [Date] = range.compactMap { day -> Date? in
-            var components = calendar.dateComponents([.year, .month], from: monthAnchor)
-            components.day = day
-            return calendar.date(from: components)
-        }
-
-        // Number of leading placeholders based on the first weekday in locale
-        let firstOfMonth = calendar.startOfMonth(for: monthAnchor)
-        let weekday = calendar.component(.weekday, from: firstOfMonth)
-        let leading = (weekday - calendar.firstWeekday + 7) % 7
-
-        // Fill with trailing placeholders to complete rows (5–6 weeks)
-        let total = leading + monthDays.count
-        let rows = Int(ceil(Double(total) / 7.0))
-        let target = rows * 7
-        let trailing = max(0, target - total)
-
-        return Array(repeating: nil, count: leading) + monthDays.map { Optional.some($0) } + Array(repeating: nil, count: trailing)
     }
 
     private var currentYear: Int {
-        Calendar.current.component(.year, from: monthAnchor)
+        viewModel.currentYear
     }
 
     private var yearOptions: [Int] {
-        yearsWithData()
-    }
-
-    private func applySelectedYear() {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-            updateYear(to: pendingYearSelection)
-        }
-        isYearPickerPresented = false
-    }
-
-    private func updateYear(to year: Int) {
-        let calendar = Calendar.current
-        let targetMonth = calendar.component(.month, from: monthAnchor)
-        let availableMonths = monthsWithData(in: year)
-
-        if let closest = closestMonth(to: targetMonth, in: availableMonths) {
-            monthAnchor = closest
-            return
-        }
-
-        var components = DateComponents()
-        components.year = year
-        components.month = targetMonth
-        components.day = 1
-        guard let date = calendar.date(from: components) else { return }
-        monthAnchor = calendar.startOfMonth(for: date)
-    }
-
-    private func count(for date: Date) -> Int {
-        let service = StatsService(statsRepository: CoreDataStatsRepository(context: context),
-                                   entryRepository: CoreDataEntryRepository(context: context))
-        return service.countForDayAllTypes(user: user, date: date)
+        viewModel.yearsWithData(context: context)
     }
 
     private var yearTitle: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate("y")
-        return formatter.string(from: monthAnchor)
+        viewModel.yearTitle()
     }
 
     private var monthsOfYear: [Date] {
-        monthsWithData(in: currentYear)
+        viewModel.monthsOfYear(context: context)
     }
 
-    private func monthsWithData(in year: Int) -> [Date] {
-        let calendar = Calendar.current
-        guard let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),
-              let endOfYear = calendar.date(byAdding: .year, value: 1, to: startOfYear) else {
-            return []
-        }
-
-        let request: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        request.predicate = NSPredicate(format: "user == %@ AND date >= %@ AND date < %@",
-                                        user, startOfYear as NSDate, endOfYear as NSDate)
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \DailyStat.date, ascending: true)]
-
-        let stats = (try? context.fetch(request)) ?? []
-        var seenMonths = Set<Date>()
-        var months: [Date] = []
-
-        for stat in stats {
-            guard let date = stat.date else { continue }
-            let monthStart = calendar.startOfMonth(for: date)
-            if seenMonths.insert(monthStart).inserted {
-                months.append(monthStart)
-            }
-        }
-
-        return months
-    }
-
-    private func yearsWithData() -> [Int] {
-        let request: NSFetchRequest<DailyStat> = DailyStat.fetchRequest()
-        request.predicate = NSPredicate(format: "user == %@", user)
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \DailyStat.date, ascending: true)]
-
-        let stats = (try? context.fetch(request)) ?? []
-        let calendar = Calendar.current
-        let years = stats.compactMap { stat -> Int? in
-            guard let date = stat.date else { return nil }
-            return calendar.component(.year, from: date)
-        }
-
-        return Array(Set(years)).sorted()
-    }
-
-    private func alignMonthAnchorToAvailableData() {
-        let currentMonth = Calendar.current.component(.month, from: monthAnchor)
-        let currentYear = Calendar.current.component(.year, from: monthAnchor)
-
-        if monthsOfYear.isEmpty {
-            guard let fallbackYear = closestYear(to: currentYear, in: yearOptions) else { return }
-            let monthsInFallbackYear = monthsWithData(in: fallbackYear)
-            guard let fallbackMonth = closestMonth(to: currentMonth, in: monthsInFallbackYear) else { return }
-            monthAnchor = fallbackMonth
-            return
-        }
-
-        guard let closest = closestMonth(to: currentMonth, in: monthsOfYear),
-              !Calendar.current.isDate(closest, equalTo: monthAnchor, toGranularity: .month) else {
-            return
-        }
-
-        monthAnchor = closest
-    }
-
-    private func closestMonth(to month: Int, in months: [Date]) -> Date? {
-        guard !months.isEmpty else { return nil }
-
-        return months.min {
-            let lhs = abs(Calendar.current.component(.month, from: $0) - month)
-            let rhs = abs(Calendar.current.component(.month, from: $1) - month)
-            return lhs < rhs
-        }
-    }
-
-    private func closestYear(to year: Int, in years: [Int]) -> Int? {
-        guard !years.isEmpty else { return nil }
-        return years.min { abs($0 - year) < abs($1 - year) }
-    }
-
-    private var creationStartDate: Date {
-        Calendar.current.startOfDay(for: user.createdAt ?? Date())
-    }
-
-    private var todayStart: Date {
-        Calendar.current.startOfDay(for: Date())
-    }
-
-    private func isDayAvailable(_ date: Date) -> Bool {
-        let startOfDay = Calendar.current.startOfDay(for: date)
-        return startOfDay >= creationStartDate && startOfDay <= todayStart
+    private var gridDays: [Date?] {
+        viewModel.gridDays()
     }
 }
 
@@ -569,6 +427,7 @@ private struct DailyDetailSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var user: User
     let date: Date
+    @StateObject private var viewModel: DailyDetailViewModel
 
     @FetchRequest private var entries: FetchedResults<Entry>
     @AppStorage("dashboardBackgroundIndex") private var legacyBackgroundIndex: Int = DashboardBackgroundStyle.default.rawValue
@@ -576,12 +435,10 @@ private struct DailyDetailSheet: View {
     @AppStorage("dashboardBackgroundIndexDark") private var backgroundIndexDark: Int = DashboardBackgroundStyle.defaultDark.rawValue
     @AppStorage("appearanceStylesMigrated") private var appearanceStylesMigrated = false
 
-    @State private var selectedMode: DailyDetailMode = .list
-    @State private var dailyTrendPoints: [DailyTrendPoint] = []
-
     init(user: User, date: Date) {
         self.user = user
         self.date = date
+        _viewModel = StateObject(wrappedValue: DailyDetailViewModel(user: user, date: date))
 
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: date) as NSDate
@@ -601,7 +458,7 @@ private struct DailyDetailSheet: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 12) {
-                    Picker("Daily detail mode", selection: $selectedMode) {
+                    Picker("Daily detail mode", selection: $viewModel.selectedMode) {
                         ForEach(DailyDetailMode.allCases) { mode in
                             Text(LocalizedStringKey(mode.labelKey))
                                 .tag(mode)
@@ -611,7 +468,7 @@ private struct DailyDetailSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
-                    if selectedMode == .list {
+                    if viewModel.selectedMode == .list {
                         listContent
                     } else {
                         trendContent
@@ -626,9 +483,9 @@ private struct DailyDetailSheet: View {
                 }
             }
         }
-        .onAppear(perform: refreshTrendData)
+        .onAppear { viewModel.refreshTrendData(context: context) }
         .onChange(of: entries.count) { _ in
-            refreshTrendData()
+            viewModel.refreshTrendData(context: context)
         }
     }
 
@@ -695,12 +552,12 @@ private struct DailyDetailSheet: View {
                 .font(.headline)
                 .foregroundStyle(primaryTextColor)
 
-            if dailyTrendPoints.isEmpty {
+            if viewModel.dailyTrendPoints.isEmpty {
                 Text("stats_chart_more_data_needed")
                     .frame(maxWidth: .infinity, minHeight: 200, alignment: .center)
                     .foregroundStyle(primaryTextColor.opacity(0.7))
             } else {
-                Chart(dailyTrendPoints) { point in
+                Chart(viewModel.dailyTrendPoints) { point in
                     LineMark(
                         x: .value(localized("stats_chart_axis_hour"), point.date, unit: .hour),
                         y: .value(localized("stats_chart_axis_count"), point.count)
@@ -776,44 +633,6 @@ private struct DailyDetailSheet: View {
         }
     }
 
-    private func refreshTrendData() {
-        let stats = StatsService(statsRepository: CoreDataStatsRepository(context: context),
-                                 entryRepository: CoreDataEntryRepository(context: context))
-        let entryType = user.product.entryType
-        let dayTotals = stats.totalsForHoursInDay(user: user, date: date, type: entryType)
-        let dayCount = stats.countForDay(user: user, date: date, type: entryType)
-        if dayTotals.isEmpty && dayCount == 0 {
-            dailyTrendPoints = []
-        } else {
-            dailyTrendPoints = pointsForHoursInDay(totals: dayTotals, anchor: date, fallbackCount: dayCount)
-        }
-    }
-
-    private func pointsForHoursInDay(totals: [Date: Int], anchor: Date, fallbackCount: Int) -> [DailyTrendPoint] {
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: anchor)
-
-        var normalizedTotals: [Date: Int] = [:]
-        for (date, count) in totals {
-            let hour = calendar.component(.hour, from: date)
-            guard let hourDate = calendar.date(byAdding: .hour, value: hour, to: start) else { continue }
-            normalizedTotals[hourDate] = count
-        }
-
-        var points: [DailyTrendPoint] = []
-        points.reserveCapacity(24)
-        for hour in 0..<24 {
-            guard let date = calendar.date(byAdding: .hour, value: hour, to: start) else { continue }
-            points.append(DailyTrendPoint(date: date, count: normalizedTotals[date, default: 0]))
-        }
-
-        if points.allSatisfy({ $0.count == 0 }) && fallbackCount > 0 {
-            return [DailyTrendPoint(date: start, count: fallbackCount)]
-        }
-
-        return points
-    }
-
     private func localized(_ key: String) -> String {
         NSLocalizedString(key, comment: "")
     }
@@ -842,38 +661,6 @@ private struct DailyDetailSheet: View {
         backgroundIndexDark = legacyBackgroundIndex
         appearanceStylesMigrated = true
     }
-}
-
-private enum DailyDetailMode: String, CaseIterable, Identifiable {
-    case list
-    case trend
-
-    var id: String { rawValue }
-
-    var labelKey: String {
-        switch self {
-        case .list: return "daily_detail_segment_list"
-        case .trend: return "daily_detail_segment_trend"
-        }
-    }
-}
-
-private struct DailyTrendPoint: Identifiable {
-    let id = UUID()
-    let date: Date
-    let count: Int
-}
-
-private extension Calendar {
-    func startOfMonth(for date: Date) -> Date {
-        let components = dateComponents([.year, .month], from: date)
-        return self.date(from: components) ?? date
-    }
-}
-
-private struct DaySelection: Identifiable {
-    let date: Date
-    var id: Date { date }
 }
 
 #Preview {

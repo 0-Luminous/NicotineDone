@@ -24,6 +24,10 @@ struct SettingsMethodSelectionView: View {
     private var selectedProfiles: [NicotineProfile] {
         profiles.filter { selection.contains($0.method) }
     }
+    
+    private var selectedProfileIsActive: Bool {
+        selectionCount == 1 && selectedProfiles.first?.method == selectedMethod
+    }
 
     var body: some View {
         NavigationStack {
@@ -89,7 +93,7 @@ struct SettingsMethodSelectionView: View {
                             .buttonStyle(PrimaryGradientButtonStyle())
                         }
 
-                        if selectionCount == 1 {
+                        if selectionCount == 1 && !selectedProfileIsActive {
                             Button(action: handleConfirmSelection) {
                                 Label("Select", systemImage: "checkmark")
                                     .frame(maxWidth: .infinity)

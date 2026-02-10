@@ -11,6 +11,7 @@ struct AchievementCard: View {
             frontSide
         }
         .buttonStyle(.plain)
+        .haptic()
     }
 
     private var frontSide: some View {

@@ -80,6 +80,7 @@ struct CalendarScreen: View {
                                                     isAvailable: isAvailable)
                                 }
                                 .buttonStyle(.plain)
+                                .haptic()
                                 .disabled(!isAvailable)
                             } else {
                                 RoundedRectangle(cornerRadius: 100, style: .continuous)
@@ -118,6 +119,7 @@ struct CalendarScreen: View {
                     }
                     .buttonStyle(.plain)
                     .tint(primaryTextColor)
+                    .haptic()
                 }
             }
         }
@@ -148,6 +150,7 @@ struct CalendarScreen: View {
                         Button("Cancel") {
                             viewModel.isYearPickerPresented = false
                         }
+                        .haptic()
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") {
@@ -155,6 +158,7 @@ struct CalendarScreen: View {
                                 viewModel.applySelectedYear(context: context)
                             }
                         }
+                        .haptic()
                     }
                 }
             }
@@ -362,6 +366,7 @@ private struct MonthChip: View {
                 .foregroundStyle(isSelected ? selectedColor : unselectedColor.opacity(0.85))
         }
         .buttonStyle(.plain)
+        .haptic()
         .padding(.horizontal, 2)
         .background(
             Capsule()
@@ -480,6 +485,7 @@ private struct DailyDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close", action: dismiss.callAsFunction)
+                        .haptic()
                 }
             }
         }

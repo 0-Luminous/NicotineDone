@@ -50,6 +50,7 @@ struct CurrencyPickerSheet: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .haptic()
                     }
                 }
                 .padding(.horizontal, 24)

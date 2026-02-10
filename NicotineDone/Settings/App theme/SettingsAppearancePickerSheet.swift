@@ -82,6 +82,7 @@ struct SettingsAppearancePickerSheet: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .haptic()
                         }
                     }
                     .padding(.horizontal, 20)

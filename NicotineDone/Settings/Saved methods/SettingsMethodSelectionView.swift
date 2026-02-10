@@ -52,18 +52,21 @@ struct SettingsMethodSelectionView: View {
                                                     backgroundStyle: backgroundStyle)
                                 }
                                 .buttonStyle(.plain)
+                                .haptic()
                                 .contextMenu {
                                     Button {
                                         handleEdit(profile)
                                     } label: {
                                         Label("Edit", systemImage: "pencil")
                                     }
+                                    .haptic()
 
                                     Button(role: .destructive) {
                                         handleDelete(profile)
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
+                                    .haptic()
                                 }
                             }
                         }
@@ -76,6 +79,7 @@ struct SettingsMethodSelectionView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .haptic()
                 }
             }
             .onChange(of: profiles) { newProfiles in
@@ -91,6 +95,7 @@ struct SettingsMethodSelectionView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(PrimaryGradientButtonStyle())
+                            .haptic()
                         }
 
                         if selectionCount == 1 && !selectedProfileIsActive {
@@ -99,6 +104,7 @@ struct SettingsMethodSelectionView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(PrimaryGradientButtonStyle())
+                            .haptic()
                             .disabled(selectionCount != 1)
                             .opacity(selectionCount == 1 ? 1 : 0.5)
                         }
@@ -112,6 +118,7 @@ struct SettingsMethodSelectionView: View {
                                         .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(PrimaryGradientButtonStyle())
+                                .haptic()
                             }
 
                             Button(role: .destructive, action: handleDeleteSelection) {
@@ -119,6 +126,7 @@ struct SettingsMethodSelectionView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(PrimaryGradientButtonStyle())
+                            .haptic()
                         }
                     }
                 }

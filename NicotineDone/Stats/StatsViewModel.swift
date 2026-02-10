@@ -44,10 +44,14 @@ final class StatsViewModel: ObservableObject {
         let monthTotals = statsService.totalsForLastDays(user: user, days: 30, type: entryType)
         let yearTotals = statsService.totalsForLastDays(user: user, days: 365, type: entryType)
 
-        var nextTrendData: [TrendRange: [DailyPoint]] = [
-            .today: pointsForHoursInDay(totals: todayHourlyTotals, anchor: anchor, fallbackCount: todayCount)
-        ]
-        var nextAvailableRanges: [TrendRange] = [.today]
+        let todayPoints = pointsForHoursInDay(totals: todayHourlyTotals, anchor: anchor, fallbackCount: todayCount)
+        var nextTrendData: [TrendRange: [DailyPoint]] = [:]
+        var nextAvailableRanges: [TrendRange] = []
+
+        if !todayPoints.isEmpty {
+            nextTrendData[.today] = todayPoints
+            nextAvailableRanges.append(.today)
+        }
 
         if !weekTotals.isEmpty {
             nextTrendData[.week] = pointsForLastDays(days: 7, totals: weekTotals, anchor: anchor)
@@ -68,7 +72,11 @@ final class StatsViewModel: ObservableObject {
         availableTrendRanges = nextAvailableRanges
 
         if !availableTrendRanges.contains(selectedTrendRange) {
-            selectedTrendRange = .today
+            if todayPoints.isEmpty, availableTrendRanges.contains(.week) {
+                selectedTrendRange = .week
+            } else {
+                selectedTrendRange = availableTrendRanges.first ?? .today
+            }
         }
 
         if let weekData = trendData[.week], !weekData.isEmpty {
@@ -107,6 +115,7 @@ final class StatsViewModel: ObservableObject {
         var results: [DailyPoint] = []
 
         if totals.isEmpty {
+            guard fallbackCount > 0 else { return [] }
             let hour = calendar.component(.hour, from: anchor)
             if let hourDate = calendar.date(byAdding: .hour, value: hour, to: dayStart) {
                 results.append(DailyPoint(date: hourDate, count: fallbackCount))

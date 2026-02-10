@@ -27,10 +27,11 @@ struct ModeSpotlightCardView: View {
             }
             .background(backgroundLayer)
             .clipShape(shape)
-            .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 26))
+            .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 28))
             .shadow(color: mode.spotlightAccentGradient.shadow.opacity(0.25), radius: 24, x: 0, y: 16)
         }
         .buttonStyle(.plain)
+        .haptic()
     }
 
     private var focusHeader: some View {

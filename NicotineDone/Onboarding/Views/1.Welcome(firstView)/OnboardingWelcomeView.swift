@@ -78,6 +78,7 @@ private struct WelcomeSlide: View {
                         .padding(.vertical, 16)
                         .frame(maxWidth: .infinity)
                 }
+                .haptic()
                 .glassEffect(.clear.interactive())
                 .background(
                     Capsule()

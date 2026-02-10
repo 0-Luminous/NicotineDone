@@ -377,6 +377,7 @@ private struct DecimalOptionsField: View {
                     Button(decimalText(option)) {
                         value = option
                     }
+                    .haptic()
                 }
             } label: {
                 HStack {

@@ -44,6 +44,7 @@ struct SettingsMethodPickerView: View {
                                 MethodCardView(method: method, isSelected: method == highlightedMethod)
                             }
                             .buttonStyle(.plain)
+                            .haptic()
                         }
                     }
                 }
@@ -55,6 +56,7 @@ struct SettingsMethodPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .haptic()
                 }
             }
             .navigationDestination(for: SettingsMethodRoute.self) { route in
@@ -69,6 +71,7 @@ struct SettingsMethodPickerView: View {
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
                                 Button("Close") { dismiss() }
+                                    .haptic()
                             }
                         }
                 }

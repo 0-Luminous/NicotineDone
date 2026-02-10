@@ -40,6 +40,7 @@ struct OnboardingMethodPickerView: View {
                                 MethodCardView(method: method, isSelected: method == selectedMethod)
                             }
                             .buttonStyle(.plain)
+                            .haptic()
                             .accessibilityHint(Text("onboarding_method_card_hint"))
                         }
                     }

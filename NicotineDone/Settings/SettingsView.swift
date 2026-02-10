@@ -48,7 +48,6 @@ struct SettingsView: View {
                     VStack(spacing: 24) {
                         trackingSection
                         navigationButtonsSection
-                        resetSection
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 24)
@@ -56,12 +55,20 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close", action: dismiss.callAsFunction)
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(role: .destructive) {
+                        appViewModel.resetOnboarding()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "gearshape.arrow.trianglehead.2.clockwise.rotate.90")
+                    }
+                    .haptic()
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close", action: dismiss.callAsFunction)
+                        .haptic()
                 }
             }
         }
@@ -102,10 +109,6 @@ struct SettingsView: View {
         }
     }
 
-    private func save() {
-        viewModel.save()
-        dismiss()
-    }
 }
 
 private extension SettingsView {
@@ -258,37 +261,6 @@ private extension SettingsView {
         .buttonStyle(.plain)
     }
 
-    var resetSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(role: .destructive) {
-                appViewModel.resetOnboarding()
-                dismiss()
-            } label: {
-                HStack {
-                    Spacer()
-                    Text("Reset onboarding")
-                        .font(.body.weight(.semibold))
-                    Spacer()
-                }
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(.thinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.red.opacity(0.3))
-            )
-
-            Text("You can re-run the onboarding to change more details or start a new journey.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     var methodSelectionCard: some View {
         Button {
             showMethodManager = true
@@ -298,6 +270,7 @@ private extension SettingsView {
         }
         .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 8)
         .buttonStyle(.plain)
+        .haptic()
     }
 
     @ViewBuilder

@@ -98,6 +98,11 @@ private extension AchievementsScreen {
             if left != right {
                 return left && !right
             }
+            let leftHours = streakHours(for: $0)
+            let rightHours = streakHours(for: $1)
+            if leftHours != rightHours {
+                return leftHours < rightHours
+            }
             return $0.title < $1.title
         }
     }
@@ -132,6 +137,7 @@ private extension AchievementsScreen {
                 .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 8)
             }
             .buttonStyle(.plain)
+            .haptic()
 
             if isStreakStackExpanded {
                 VStack(alignment: .leading, spacing: 12) {
@@ -158,6 +164,13 @@ private extension AchievementsScreen {
         backgroundIndexLight = legacyBackgroundIndex
         backgroundIndexDark = legacyBackgroundIndex
         appearanceStylesMigrated = true
+    }
+
+    func streakHours(for achievement: AchievementItem) -> Int {
+        if case let .abstinenceHours(hours) = achievement.rule {
+            return hours
+        }
+        return .max
     }
 
 }

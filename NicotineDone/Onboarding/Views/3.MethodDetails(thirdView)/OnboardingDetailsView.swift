@@ -82,6 +82,7 @@ struct OnboardingDetailsView: View {
                         .labelStyle(.titleAndIcon)
                         .foregroundStyle(primaryTextColor)
                 }
+                .haptic()
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -99,6 +100,7 @@ struct OnboardingDetailsView: View {
                         .foregroundStyle(primaryTextColor)
                 }
                 .buttonStyle(PrimaryGradientButtonStyle())
+                .haptic()
                 .disabled(!viewModel.isCurrentFormValid)
                 .opacity(viewModel.isCurrentFormValid ? 1 : 0.5)
             }
@@ -116,6 +118,7 @@ struct OnboardingDetailsView: View {
                             Button("back_button") {
                                 isCurrencySheetPresented = false
                             }
+                            .haptic()
                         }
                     }
                     .navigationTitle(Text("onboarding_currency_picker_title"))
@@ -176,6 +179,7 @@ struct OnboardingDetailsView: View {
             .glassInputStyle()
         }
         .buttonStyle(.plain)
+        .haptic()
     }
 
     private var selectedCurrencyDescription: String {

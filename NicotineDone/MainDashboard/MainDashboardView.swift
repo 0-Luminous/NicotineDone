@@ -142,6 +142,7 @@ struct MainDashboardView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .haptic()
                 }
             }
         }

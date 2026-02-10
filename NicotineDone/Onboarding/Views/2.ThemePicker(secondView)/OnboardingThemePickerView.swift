@@ -38,6 +38,7 @@ struct OnboardingThemePickerView: View {
                                                   colorScheme: colorScheme)
                                 }
                                 .buttonStyle(.plain)
+                                .haptic()
                             }
                         }
 
@@ -48,6 +49,7 @@ struct OnboardingThemePickerView: View {
                                 .padding(.vertical, 16)
                                 .frame(maxWidth: .infinity)
                         }
+                        .haptic()
                         .background(
                             Capsule()
                                 .fill(LinearGradient(colors: [
